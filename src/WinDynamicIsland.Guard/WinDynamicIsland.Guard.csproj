@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>WinExe</OutputType><AssemblyName>IslandGuard</AssemblyName></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\WinDynamicIsland.Core\WinDynamicIsland.Core.csproj"/>
+    <Reference Include="System.Web.Extensions"/>
+    <Compile Include="..\WinDynamicIsland.App\Integrations\Devices\BatteryBannerPolicy.cs" Link="BatteryBannerPolicy.cs"/>
+  </ItemGroup>
+</Project>

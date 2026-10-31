@@ -1,0 +1,13 @@
+name: Windows build
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet build WinDynamicIsland.sln --configuration Release
+      - shell: pwsh
+        run: ./scripts/Build.ps1 -TestCore

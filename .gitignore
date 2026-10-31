@@ -1,0 +1,14 @@
+**/bin/
+**/obj/
+artifacts/
+.vs/
+.idea/
+*.user
+*.suo
+*.bin
+*.log
+*.tmp
+extensions/browser/connection.js
+extensions/browser/connection.local.js
+local/
+*.zip

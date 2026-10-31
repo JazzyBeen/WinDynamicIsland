@@ -1,0 +1,86 @@
+using System;
+using System.Collections.Generic;
+
+namespace WinDynamicIsland.Core
+{
+    public static class L
+    {
+        public static string Language = "ru";
+        static readonly Dictionary<string, string[]> text = new Dictionary<string, string[]> {
+            {"Settings",new[]{"Настройки","Settings"}}, {"General",new[]{"Основное","General"}},
+            {"Appearance",new[]{"Оформление","Appearance"}}, {"Media",new[]{"Медиа","Media"}},
+            {"Notifications",new[]{"Уведомления","Notifications"}}, {"Devices",new[]{"Устройства","Devices"}},
+            {"VPN",new[]{"VPN","VPN"}}, {"About",new[]{"О приложении","About"}},
+            {"Language",new[]{"Язык приложения","Application language"}},
+            {"Startup",new[]{"Запускать при входе в Windows","Start with Windows"}},
+            {"StartupNotice",new[]{"Показывать остров при запуске","Show island on startup"}},
+            {"Ready",new[]{"Остров готов","Your island is ready"}},
+            {"Save",new[]{"Сохранить","Save changes"}}, {"Saved",new[]{"Настройки сохранены","Settings saved"}},
+            {"Exit",new[]{"Выйти","Quit"}}, {"Preview",new[]{"Показать остров","Preview island"}},
+            {"OpenSettings",new[]{"Открыть настройки","Open settings"}},
+            {"TopGap",new[]{"Отступ сверху, px","Top margin, px"}},
+            {"Blur",new[]{"Размытие в движении, мс","Motion blur exposure, ms"}},
+            {"Settle",new[]{"Мягкое растяжение после раскрытия","Soft settling animation"}},
+            {"Monitor",new[]{"Экран","Display"}}, {"Duration",new[]{"Время уведомления, сек","Notification duration, sec"}},
+            {"MediaEnabled",new[]{"Показывать медиаплеер","Show media player"}},
+            {"BackgroundOnly",new[]{"Показывать только когда приложение в фоне","Show only when the app is in the background"}},
+            {"Collapse",new[]{"Сворачивать медиаплеер через, сек","Collapse media player after, sec"}},
+            {"BrowserEnabled",new[]{"Подключить медиа из браузеров","Enable browser media bridge"}},
+            {"BrowserHelp",new[]{"Для сайтов без медиасессии Windows установите расширение. Нажмите кнопку ниже, затем загрузите выбранную папку через «Загрузить распакованное расширение» на странице расширений браузера. Поддерживаются Яндекс, Chrome и Edge. После установки обновите вкладки с медиа.","For sites without a Windows media session, install the extension. Use the button below, then choose that folder via Load unpacked on your browser's extensions page. Supports Yandex, Chrome and Edge. Reload media tabs after installation."}},
+            {"PrepareBrowser",new[]{"Подготовить расширение и открыть папку","Prepare extension and open folder"}},
+            {"Telegram",new[]{"Уведомления Telegram с аватаркой","Telegram notifications with avatars"}},
+            {"Codex",new[]{"Уведомления Codex","Codex notifications"}},
+            {"CodexBackground",new[]{"Codex: только когда окно в фоне","Codex: only in the background"}},
+            {"Suppress",new[]{"Скрывать дублирующие баннеры Windows","Hide duplicate Windows banners"}},
+            {"Battery",new[]{"Низкий заряд батареи","Low battery alerts"}},
+            {"Headphones",new[]{"Подключение Bluetooth-наушников","Bluetooth headphones connected"}},
+            {"Charging",new[]{"Подключение и отключение зарядки","Charger connected or disconnected"}},
+            {"Threshold",new[]{"Первое предупреждение при заряде, %","First battery warning at, %"}},
+            {"LowBattery",new[]{"Низкий заряд","Low battery"}}, {"ChargingOn",new[]{"Зарядка подключена","Charger connected"}},
+            {"ChargingOff",new[]{"Работа от батареи","On battery power"}},
+            {"VpnEnabled",new[]{"Управлять VPN через остров","Control VPN through the island"}},
+            {"Provider",new[]{"Провайдер","Provider"}}, {"VpnName",new[]{"Название VPN","VPN display name"}},
+            {"Profile",new[]{"Имя профиля Windows VPN","Windows VPN profile name"}},
+            {"Hotkey",new[]{"Alt+N — подключить / отключить VPN","Alt+N — connect / disconnect VPN"}},
+            {"ConnectExe",new[]{"Программа подключения","Connect executable"}}, {"ConnectArgs",new[]{"Аргументы подключения","Connect arguments"}},
+            {"DisconnectExe",new[]{"Программа отключения","Disconnect executable"}}, {"DisconnectArgs",new[]{"Аргументы отключения","Disconnect arguments"}},
+            {"StatusExe",new[]{"Программа проверки состояния","Status executable"}}, {"StatusArgs",new[]{"Аргументы проверки состояния","Status arguments"}},
+            {"CommandHelp",new[]{"Для другого VPN укажите его CLI. Проверка состояния: код выхода 0 = подключён, 1 = отключён. Другие коды считаются ошибкой. Команды выполняются напрямую, без оболочки; пароли храните в самом VPN-клиенте.","For another VPN, configure its CLI. Status exit code: 0 = connected, 1 = disconnected. Other codes indicate an error. Commands run directly without a shell; keep passwords in your VPN client."}},
+            {"SotaSetup",new[]{"Настроить Sota для работы без окна","Set up Sota for background control"}},
+            {"SotaHelp",new[]{"Sota — необязательный модуль. Профиль хранится локально с шифрованием Windows. На новом компьютере его нужно записать заново. Кнопка настройки не переключает VPN автоматически.","Sota is an optional module. Its profile is encrypted locally by Windows. Capture it again on a new computer. Setup does not toggle VPN automatically."}},
+            {"ToggleVpn",new[]{"Переключить VPN","Toggle VPN"}}, {"Connected",new[]{"Подключён","Connected"}},
+            {"Disconnected",new[]{"Отключён","Disconnected"}}, {"Connecting",new[]{"Подключение…","Connecting…"}},
+            {"Disconnecting",new[]{"Отключение…","Disconnecting…"}}, {"Error",new[]{"Ошибка","Error"}},
+            {"VpnNotConfigured",new[]{"Выберите и настройте VPN в настройках","Choose and configure a VPN in settings"}},
+            {"DataFolder",new[]{"Открыть папку данных","Open data folder"}},
+            {"AboutText",new[]{"Win Dynamic Island 2.0\r\nМедиа, уведомления, устройства и VPN — в одном острове.\r\nНастройки и личные профили хранятся только на этом компьютере.","Win Dynamic Island 2.0\r\nMedia, notifications, devices and VPN in one island.\r\nSettings and personal profiles stay on this computer."}},
+            {"GeneralHelp",new[]{"Приложение работает в области уведомлений. Закрытие этого окна оставляет остров включённым. Новые настройки применяются после сохранения.","The app runs in the system tray. Closing this window keeps the island running. Save to apply changes."}},
+            {"Nothing",new[]{"Не подключён","None"}}, {"WindowsVpn",new[]{"Windows VPN","Windows VPN"}},
+            {"CustomCli",new[]{"Другой VPN (CLI)","Other VPN (CLI)"}},
+            {"BridgePrepared",new[]{"Расширение подготовлено","Extension prepared"}},
+            {"Close",new[]{"Закрыть","Close"}}, {"Status",new[]{"Состояние","Status"}},
+            {"Running",new[]{"Работает","Running"}}, {"Unavailable",new[]{"Недоступен","Unavailable"}},
+            {"SetupTitle",new[]{"Настройка Sota VPN","Sota VPN setup"}},
+            {"SetupAdmin",new[]{"Запустите настройку от имени администратора. Нужен доступ к локальному адресу службы Sota.","Run setup as administrator to access Sota's local service endpoint."}},
+            {"SetupBusy",new[]{"Окно настройки уже открыто.","Setup is already open."}},
+            {"SetupBegin",new[]{"Начать запись","Start capture"}},
+            {"SetupIntro",new[]{"Сохраняется только команда подключения Sota, локально и с шифрованием Windows.\r\n\r\nПосле нажатия кнопки вручную завершите Sota через значок в трее, откройте её и подключите VPN. Связь с интернетом на это время может пропасть.\r\n\r\nЭто окно само не отключает и не включает VPN.","Only Sota's connection command is captured, locally with Windows encryption.\r\n\r\nAfter starting, manually quit Sota from its tray menu, open it again and connect. Internet access may be interrupted during your manual restart.\r\n\r\nThis setup never connects or disconnects VPN by itself."}},
+            {"SetupWaiting",new[]{"Готово к записи.\r\n\r\n1. Вручную завершите Sota через значок в трее.\r\n2. Откройте Sota и подключите VPN.\r\n3. Дождитесь сообщения «Настройки сохранены».\r\n\r\nОжидание ограничено десятью минутами.","Ready to capture.\r\n\r\n1. Manually quit Sota from its tray menu.\r\n2. Open Sota and connect VPN.\r\n3. Wait for Settings saved.\r\n\r\nCapture times out after ten minutes."}},
+            {"SetupTimeout",new[]{"Время ожидания вышло. Исходный адрес службы восстановлен.","Capture timed out. The original service endpoint was restored."}},
+            {"SetupFailed",new[]{"Не удалось подготовить запись. VPN не переключался. Закройте окно.","Capture could not be prepared. VPN was not toggled. Close this window."}},
+            {"SetupSaved",new[]{"Настройки сохранены.\r\n\r\nКоманда подключения зашифрована Windows. Закройте окно. Теперь остров может управлять Sota без открытия её приложения. После смены настроек Sota запись может потребоваться повторить.","Settings saved.\r\n\r\nThe connection command is encrypted by Windows. Close this window. The island can now control Sota without opening its app. Capture again if Sota's settings change."}},
+            {"SetupSaveFailed",new[]{"Команда получена, но сохранить её не удалось. Закройте окно и повторите настройку.","The command was received but could not be saved. Close setup and try again."}},
+            {"SetupRestoreFailed",new[]{"Не удалось восстановить адрес службы. Повторно запустите настройку или перезапустите службу Sota вручную.","The service endpoint could not be restored. Run setup again or restart Sota's service manually."}},
+            {"ProfileInvalid",new[]{"Неизвестный или неполный формат профиля Sota.","The Sota profile is incomplete or has an unknown format."}},
+            {"ProfileStale",new[]{"Настройки или версия Sota изменились. Повторите настройку Sota в приложении.","Sota settings or version changed. Capture the Sota profile again from settings."}},
+            {"ProfileMissing",new[]{"Сначала запишите профиль Sota в настройках VPN.","Capture a Sota profile in VPN settings first."}},
+            {"ProfileReady",new[]{"Профиль Sota готов к работе без окна.","Sota profile is ready for background control."}},
+            {"ProfileNeedsSetup",new[]{"Профиль Sota отсутствует или не совпадает с текущими настройками. Для включения без окна повторите запись профиля кнопкой ниже.","The Sota profile is missing or does not match current settings. Capture it using the button below to connect without opening Sota."}}
+        };
+        public static string T(string key)
+        {
+            string[] value;
+            return text.TryGetValue(key, out value) ? value[Language == "en" ? 1 : 0] : key;
+        }
+    }
+}

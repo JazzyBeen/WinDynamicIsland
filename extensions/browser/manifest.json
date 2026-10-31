@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "Win Dynamic Island — Browser Media",
+  "version": "2.0.0",
+  "host_permissions": [
+    "http://127.0.0.1:48573/*"
+  ],
+  "background": {
+    "service_worker": "background-http.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Win Dynamic Island"
+  },
+  "description": "Local browser media controls for Win Dynamic Island. No account or remote server required.",
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "relay.js"
+      ],
+      "world": "ISOLATED",
+      "run_at": "document_start",
+      "all_frames": true,
+      "match_about_blank": true
+    },
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "media-bridge.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true,
+      "match_about_blank": true,
+      "world": "MAIN"
+    }
+  ]
+}

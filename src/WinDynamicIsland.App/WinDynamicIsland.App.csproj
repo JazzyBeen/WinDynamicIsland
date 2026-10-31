@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType><UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>WinDynamicIsland</AssemblyName><ApplicationIcon>..\..\assets\WinDynamicIsland.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\WinDynamicIsland.Core\WinDynamicIsland.Core.csproj"/>
+    <Reference Include="System.Web.Extensions"/><Reference Include="System.Security"/>
+    <Reference Include="WindowsBase"><HintPath>$(FrameworkRoot)\WPF\WindowsBase.dll</HintPath></Reference>
+    <Reference Include="PresentationCore"><HintPath>$(FrameworkRoot)\WPF\PresentationCore.dll</HintPath></Reference>
+    <Reference Include="System.Runtime"><HintPath>$(FrameworkRoot)\System.Runtime.dll</HintPath></Reference>
+    <Reference Include="System.Runtime.InteropServices.WindowsRuntime"><HintPath>$(FrameworkRoot)\System.Runtime.InteropServices.WindowsRuntime.dll</HintPath></Reference>
+    <Reference Include="Windows.Foundation"><HintPath>$(WindowsMetadata)\Windows.Foundation.winmd</HintPath></Reference>
+    <Reference Include="Windows.Media"><HintPath>$(WindowsMetadata)\Windows.Media.winmd</HintPath></Reference>
+    <Reference Include="Windows.Devices"><HintPath>$(WindowsMetadata)\Windows.Devices.winmd</HintPath></Reference>
+    <Reference Include="Windows.Storage"><HintPath>$(WindowsMetadata)\Windows.Storage.winmd</HintPath></Reference>
+    <Reference Include="Windows.Networking"><HintPath>$(WindowsMetadata)\Windows.Networking.winmd</HintPath></Reference>
+    <Reference Include="Windows.System"><HintPath>$(WindowsMetadata)\Windows.System.winmd</HintPath></Reference>
+    <EmbeddedResource Include="..\..\assets\rewind-fill.svg"><LogicalName>RewindSvg</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="..\..\assets\fast-forward-fill.svg"><LogicalName>ForwardSvg</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="..\..\assets\bootstrap-icons-LICENSE"><LogicalName>MediaIconsLicense</LogicalName></EmbeddedResource>
+    <Content Include="..\..\extensions\browser\*" Exclude="..\..\extensions\browser\connection.js"><Link>browser-extension\%(Filename)%(Extension)</Link><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="..\..\assets\codex-icon.png"><Link>codex-icon.png</Link><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+  </ItemGroup>
+</Project>
