@@ -213,8 +213,8 @@ namespace WinDynamicIsland
                                 string id;
                                 var p = StartParameters(line, out id);
                                 if (p != null)
-                                lock (pending)
-                                    pending[id] = p;
+                                    lock (pending)
+                                        pending[id] = p;
                                 uw.WriteLine(line);
                             }
                         }
@@ -233,11 +233,11 @@ namespace WinDynamicIsland
                         lock (pending)
                         {
                             foreach (var p in pending)
-                            if (Success(reply, p.Key))
-                            {
-                                accepted = p.Value;
-                                break;
-                            }
+                                if (Success(reply, p.Key))
+                                {
+                                    accepted = p.Value;
+                                    break;
+                                }
                         }
                         if (accepted != null && Interlocked.CompareExchange(ref saved, 1, 0) == 0)
                         {
@@ -279,12 +279,12 @@ namespace WinDynamicIsland
             if (listener != null)
                 listener.Stop();
             lock (sync)
-            foreach (var c in clients)
-                try
-                {
-                    c.Close();
-                }
-                catch { }
+                foreach (var c in clients)
+                    try
+                    {
+                        c.Close();
+                    }
+                    catch { }
         }
     }
     internal static class Recovery

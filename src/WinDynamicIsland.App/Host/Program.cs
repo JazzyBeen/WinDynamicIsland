@@ -116,6 +116,7 @@ namespace WinDynamicIsland
                 if (!created)
                 {
                     var handle = FindWindow(null, "WinDynamicIsland.Host");
+                    Log("command.txt", "Action=" + action + "; ListenerFound=" + (handle != IntPtr.Zero));
                     if (handle != IntPtr.Zero)
                     {
                         uint id;

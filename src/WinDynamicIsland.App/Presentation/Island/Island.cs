@@ -495,9 +495,9 @@ namespace WinDynamicIsland
                 {
                     watch.Restart();
                     for (int i = 0; i < 12; i++)
-                    using (var frame = IslandSurface.Render(face, motionSamples))
-                    {
-                    }
+                        using (var frame = IslandSurface.Render(face, motionSamples))
+                        {
+                        }
                     report += " Average motion frame: " + (watch.Elapsed.TotalMilliseconds / 12).ToString("F1") + " ms.";
                 }
                 System.IO.File.WriteAllText(System.IO.Path.Combine(folder, "render.txt"), report);
@@ -552,8 +552,8 @@ namespace WinDynamicIsland
                 if (mediaData != null)
                     mediaData.Dispose();
                 foreach (var notice in notices)
-                if (notice.Avatar != null)
-                    notice.Avatar.Dispose();
+                    if (notice.Avatar != null)
+                        notice.Avatar.Dispose();
             }
             base.Dispose(disposing);
         }

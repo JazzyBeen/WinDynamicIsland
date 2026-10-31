@@ -38,11 +38,11 @@ namespace WinDynamicIsland
                                 previous = line.Point;
                             }
                             else if (poly != null)
-                            foreach (var point in poly.Points)
-                            {
-                                path.AddLine((float)previous.X, (float)previous.Y, (float)point.X, (float)point.Y);
-                                previous = point;
-                            }
+                                foreach (var point in poly.Points)
+                                {
+                                    path.AddLine((float)previous.X, (float)previous.Y, (float)point.X, (float)point.Y);
+                                    previous = point;
+                                }
                         }
                         if (figure.IsClosed)
                             path.CloseFigure();

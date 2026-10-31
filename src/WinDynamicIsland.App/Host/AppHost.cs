@@ -54,8 +54,8 @@ namespace WinDynamicIsland
             tray.Visible = true;
             string guard = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "IslandGuard.exe");
             if (File.Exists(guard))
-            using (var owner = Process.GetCurrentProcess())
-                Process.Start(new ProcessStartInfo(guard, owner.Id + " " + owner.StartTime.ToUniversalTime().Ticks) { UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden });
+                using (var owner = Process.GetCurrentProcess())
+                    Process.Start(new ProcessStartInfo(guard, owner.Id + " " + owner.StartTime.ToUniversalTime().Ticks) { UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden });
             Program.Log("host.txt", "Running; version=2.0; PID=" + Process.GetCurrentProcess().Id);
             if (Program.Settings.ShowStartupIsland)
                 Program.Presenter.Status("Win Dynamic Island", L.T("Ready"), true, false);
@@ -125,6 +125,9 @@ namespace WinDynamicIsland
             if (settings.WindowState == FormWindowState.Minimized)
                 settings.WindowState = FormWindowState.Normal;
             settings.Activate();
+            Program.ShowWindow(settings.Handle, 9);
+            Program.SetForegroundWindow(settings.Handle);
+            Program.Log("settings-window.txt", "Opened; Visible=" + settings.Visible);
         }
         void Apply(AppSettings next)
         {
