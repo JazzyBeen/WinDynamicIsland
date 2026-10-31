@@ -6,6 +6,10 @@ namespace WinDynamicIsland.Core
 {
     public sealed class AppSettings
     {
+        public bool InterfaceAnimations
+        {
+            get; set;
+        }
         public string NotificationMode
         {
             get; set;
@@ -210,6 +214,7 @@ namespace WinDynamicIsland.Core
             NotificationMode = "Selected";
             NotificationApps = new string[0];
             GlassStyle = VolumeEnabled = MicrophoneEnabled = F7MicrophoneIndicator = true;
+            InterfaceAnimations = true;
             ReplaceSystemVolumeFlyout = true;
             VpnAdapterId = "";
         }

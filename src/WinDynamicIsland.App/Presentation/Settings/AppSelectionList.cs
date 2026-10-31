@@ -70,6 +70,9 @@ namespace WinDynamicIsland
         {
             offset = Math.Max(0, Math.Min(Math.Max(0, visible.Length * RowHeight - Height), offset - e.Delta / 120 * RowHeight * 3));
             Invalidate();
+            var handled = e as HandledMouseEventArgs;
+            if (handled != null)
+                handled.Handled = true;
             base.OnMouseWheel(e);
         }
         protected override bool IsInputKey(Keys key)

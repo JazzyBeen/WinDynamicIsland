@@ -58,7 +58,7 @@ namespace WinDynamicIsland
             if (File.Exists(guard))
                 using (var owner = Process.GetCurrentProcess())
                     Process.Start(new ProcessStartInfo(guard, owner.Id + " " + owner.StartTime.ToUniversalTime().Ticks) { UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden });
-            Program.Log("host.txt", "Running; version=2.1; PID=" + Process.GetCurrentProcess().Id);
+            Program.Log("host.txt", "Running; version=2.1.1; PID=" + Process.GetCurrentProcess().Id);
             if (Program.Settings.ShowStartupIsland)
                 Program.Presenter.Status("Win Dynamic Island", L.T("Ready"), true, false);
             if (action == "--settings")
@@ -127,7 +127,7 @@ namespace WinDynamicIsland
                 settings = new SettingsForm(Apply);
             else if (!settings.Visible)
                 settings.ReloadSaved();
-            settings.Show();
+            settings.RevealFromTray();
             if (settings.WindowState == FormWindowState.Minimized)
                 settings.WindowState = FormWindowState.Normal;
             settings.Activate();

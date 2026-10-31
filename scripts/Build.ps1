@@ -26,7 +26,7 @@ Copy-Item (Join-Path $root 'assets\codex-icon.png') $output -Force
 New-Item -ItemType Directory -Path (Join-Path $output 'browser-extension') -Force | Out-Null
 Get-ChildItem (Join-Path $root 'extensions\browser') -File | Where-Object {$_.Name -ne 'connection.js'} | Copy-Item -Destination (Join-Path $output 'browser-extension') -Force
 if($Test -or $TestCore -or $Suites){
-  $selectedSuites=if($Suites){$Suites}elseif($Test){@('SettingsTests','SettingsUiTests','TelegramNotificationTests','MediaIntegrationTests','BrowserIntegrationTests','CaptureTests','ExperienceTests')}else{@('SettingsTests','BrowserIntegrationTests','ExperienceTests')}
+  $selectedSuites=if($Suites){$Suites}elseif($Test){@('SettingsTests','SettingsUiTests','SettingsMotionTests','TelegramNotificationTests','MediaIntegrationTests','BrowserIntegrationTests','CaptureTests','ExperienceTests')}else{@('SettingsTests','SettingsMotionTests','BrowserIntegrationTests','ExperienceTests')}
   foreach($suite in $selectedSuites){
     $suiteExecutable=Join-Path $output ($suite+'.exe')
     $extraSources=@();if($suite -eq 'CaptureTests'){$extraSources+=(Join-Path $root 'src\WinDynamicIsland.SotaSetup\Program.cs')}

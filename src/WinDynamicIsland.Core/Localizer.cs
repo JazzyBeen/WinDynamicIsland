@@ -8,6 +8,8 @@ namespace WinDynamicIsland.Core
         public static string Language = "ru";
         static readonly Dictionary<string, string[]> extra = new Dictionary<string, string[]> {
             {"GlassStyle",new[]{"Стеклянные карточки","Glass surfaces"}},
+            {"InterfaceMotion",new[]{"Плавные переходы интерфейса","Animate interface transitions"}},
+            {"CheckingProfile",new[]{"Проверка профиля Sota…","Checking Sota profile…"}},
             {"NotificationRoute",new[]{"Показывать через остров","Route through the island"}},
             {"SelectedApps",new[]{"Выбранные","Selected apps"}}, {"AllApps",new[]{"Все приложения","All apps"}},
             {"RoutingHelp",new[]{"Выберите отправителей ниже. В режиме «Все приложения» баннеры Windows заменяются островом; уведомления остаются в центре уведомлений. Собственные всплывающие окна приложений настраиваются в самих приложениях.","Choose senders below. All apps mode replaces Windows banners with the island and keeps Notification Center delivery. Apps that draw their own popups must be configured in the app itself."}},
@@ -78,7 +80,7 @@ namespace WinDynamicIsland.Core
             {"Disconnecting",new[]{"Отключение…","Disconnecting…"}}, {"Error",new[]{"Ошибка","Error"}},
             {"VpnNotConfigured",new[]{"Выберите и настройте VPN в настройках","Choose and configure a VPN in settings"}},
             {"DataFolder",new[]{"Открыть папку данных","Open data folder"}},
-            {"AboutText",new[]{"Win Dynamic Island 2.1\r\nМедиа, уведомления, устройства и VPN — в одном острове.\r\nНастройки и личные профили хранятся только на этом компьютере.","Win Dynamic Island 2.1\r\nMedia, notifications, devices and VPN in one island.\r\nSettings and personal profiles stay on this computer."}},
+            {"AboutText",new[]{"Win Dynamic Island 2.1.1\r\nМедиа, уведомления, устройства и VPN — в одном острове.\r\nНастройки и личные профили хранятся только на этом компьютере.","Win Dynamic Island 2.1.1\r\nMedia, notifications, devices and VPN in one island.\r\nSettings and personal profiles stay on this computer."}},
             {"GeneralHelp",new[]{"Приложение работает в области уведомлений. Закрытие этого окна оставляет остров включённым. Новые настройки применяются после сохранения.","The app runs in the system tray. Closing this window keeps the island running. Save to apply changes."}},
             {"Nothing",new[]{"Не подключён","None"}}, {"WindowsVpn",new[]{"Windows VPN","Windows VPN"}},
             {"CustomCli",new[]{"Другой VPN (CLI)","Other VPN (CLI)"}},

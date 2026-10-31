@@ -1,11 +1,40 @@
 using System;
 using System.Linq;
 using System.Net.NetworkInformation;
+using System.Drawing;
+using System.Threading;
+using System.Windows.Forms;
 using WinDynamicIsland.Core;
 namespace WinDynamicIsland
 {
     internal sealed partial class SettingsForm
     {
+        void SotaProfileStatus()
+        {
+            Help("CheckingProfile");
+            var label = (Label)body.Controls[body.Controls.Count - 1];
+            ThreadPool.QueueUserWorkItem(delegate
+            {
+                bool valid = true;
+                try
+                {
+                    ApiProfile.Load();
+                }
+                catch { valid = false; }
+                try
+                {
+                    if (!IsDisposed && IsHandleCreated)
+                        BeginInvoke((Action)delegate
+                        {
+                            if (label.IsDisposed)
+                                return;
+                            label.Text = L.T(valid ? "ProfileReady" : "ProfileNeedsSetup");
+                            label.Height = TextRenderer.MeasureText(label.Text, label.Font, new Size(label.Width, 0), TextFormatFlags.WordBreak).Height + 12;
+                        });
+                }
+                catch (InvalidOperationException) { }
+            });
+        }
         void AdapterChoice()
         {
             var adapters = NetworkInterface.GetAllNetworkInterfaces().Where(n => n.NetworkInterfaceType != NetworkInterfaceType.Loopback).ToArray();

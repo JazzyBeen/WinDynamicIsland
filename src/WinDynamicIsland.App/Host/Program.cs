@@ -8,7 +8,7 @@ using System.Windows.Forms;
 using WinDynamicIsland.Core;
 
 [assembly: System.Reflection.AssemblyTitle("Win Dynamic Island")]
-[assembly: System.Reflection.AssemblyVersion("2.1.0.0")]
+[assembly: System.Reflection.AssemblyVersion("2.1.1.0")]
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("WinDynamicIsland.Tests")]
 namespace WinDynamicIsland
 {
@@ -60,7 +60,7 @@ namespace WinDynamicIsland
             Application.SetCompatibleTextRenderingDefault(false);
             if (args.Length > 0 && args[0] == "--check")
             {
-                Log("health.txt", "Version=2.1; Startup=" + StartupRegistration.IsEnabled + "; SotaProfile=" + File.Exists(ApiProfile.PathName));
+                Log("health.txt", "Version=2.1.1; Startup=" + StartupRegistration.IsEnabled + "; SotaProfile=" + File.Exists(ApiProfile.PathName));
                 return;
             }
             if (args.Length > 0 && args[0] == "--check-api")
@@ -111,6 +111,12 @@ namespace WinDynamicIsland
                 {
                     form.Export(args[1]);
                 }
+                return;
+            }
+            if (args.Length == 2 && args[0] == "--render-navigation")
+            {
+                using (var form = new SettingsForm(null))
+                    form.ExportNavigationPreview(args[1]);
                 return;
             }
             string action = args.Length == 0 ? "--settings" : args[0];
