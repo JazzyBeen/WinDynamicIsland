@@ -10,6 +10,8 @@ namespace WinDynamicIsland
     {
         internal static IVpnProvider Create(AppSettings settings)
         {
+            if (settings.VpnProvider == "Adapter")
+                return new AdapterVpnProvider(settings);
             if (settings.VpnProvider == "Sota")
                 return new SotaVpnProvider();
             if (settings.VpnProvider == "Windows")

@@ -60,7 +60,7 @@ namespace WinDynamicIsland
         private readonly LinkedList<Notice> notices = new LinkedList<Notice>();
         private sealed class Notice
         {
-            internal string Title, Body; internal Bitmap Avatar; internal Action Presented; internal NotificationApp App; internal CompactNoticeKind Kind; internal int Value;
+            internal string Title, Body; internal Bitmap Avatar; internal Action Presented; internal NotificationApp App; internal CompactNoticeKind Kind; internal int Value; internal bool Active, Wide;
         }
         private CompactNoticeKind compactKind;
         private int compactValue;
@@ -70,14 +70,14 @@ namespace WinDynamicIsland
         {
             get
             {
-                return compactKind != CompactNoticeKind.None ? 4500 : notification ? (Preview ? 30000 : Program.Settings.NotificationSeconds * 1000) : 3000;
+                return IsControlHud ? (compactKind == CompactNoticeKind.Volume ? 2200 : 3000) : compactKind != CompactNoticeKind.None ? 4500 : notification ? (Preview ? 30000 : Program.Settings.NotificationSeconds * 1000) : 3000;
             }
         }
         private int ExpandedWidth
         {
             get
             {
-                return compactKind != CompactNoticeKind.None ? 260 : notification ? 460 : 310;
+                return compactKind != CompactNoticeKind.None ? CompactNoticeWidth : notification ? 460 : 310;
             }
         }
         private int ExpandedHeight
@@ -201,6 +201,8 @@ namespace WinDynamicIsland
             notificationApp = notice.App;
             compactKind = notice.Kind;
             compactValue = notice.Value;
+            if (HudKind(notice.Kind))
+                BeginHud(notice);
             Cursor = compactKind == CompactNoticeKind.None && notificationApp == NotificationApp.Telegram ? Cursors.Hand : Cursors.Default;
             UpdateText(notice.Title, notice.Body, true, false);
         }
@@ -286,6 +288,8 @@ namespace WinDynamicIsland
                 NextNoticeOrMedia();
                 return;
             }
+            if (IsControlHud && ((now - hudValueAt).TotalMilliseconds < 160 || (now - hudShapeAt).TotalMilliseconds < 230))
+                dirty = true;
             var current = MotionAt(now);
             var trail = MotionAt(now.AddMilliseconds(-MotionExposureMs));
             if (!dirty && current == previousFrame && trail == previousTrail)
@@ -317,7 +321,8 @@ namespace WinDynamicIsland
             {
                 double phase = OpeningPhaseAt(time);
                 double pulse = done && elapsed >= HoldMs ? 0 : SettleAt((time - appeared).TotalMilliseconds - OpeningMs);
-                return RevealMotion(260, 40, phase, pulse, 0);
+                var size = IsControlHud ? HudSizeAt(time) : new SizeF(CompactNoticeWidth, 40);
+                return RevealMotion(size.Width, size.Height, phase, pulse, 0);
             }
             double opening = OpeningPhaseAt(time);
             double slide = 1 - Ease(opening / SlideMs), amount = ExpansionAt(time);
@@ -359,7 +364,10 @@ namespace WinDynamicIsland
         private Bitmap DrawFaceAt(DateTime time)
         {
             if (compactKind != CompactNoticeKind.None)
-                return DrawFace(260, 40, 1);
+            {
+                var size = IsControlHud ? HudSizeAt(time) : new SizeF(CompactNoticeWidth, 40);
+                return DrawFace((int)Math.Round(size.Width), (int)Math.Round(size.Height), 1);
+            }
             double amount = ExpansionAt(time);
             // Keep the text layout steady; the compositor squeezes the whole face together.
             return DrawFace((int)Math.Round(CompactWidth + (ExpandedWidth - CompactWidth) * amount),
@@ -397,7 +405,10 @@ namespace WinDynamicIsland
                 }
                 if (compactKind != CompactNoticeKind.None)
                 {
-                    DrawCompactNotice(g, width, height);
+                    if (IsControlHud)
+                        DrawControlHud(g, width, height);
+                    else
+                        DrawCompactNotice(g, width, height);
                     return face;
                 }
                 int iconSize = (int)(26 + (notification ? 22 : 12) * amount);
@@ -501,6 +512,17 @@ namespace WinDynamicIsland
                     report += " Average motion frame: " + (watch.Elapsed.TotalMilliseconds / 12).ToString("F1") + " ms.";
                 }
                 System.IO.File.WriteAllText(System.IO.Path.Combine(folder, "render.txt"), report);
+            }
+        }
+        protected override void SetVisibleCore(bool value)
+        {
+            base.SetVisibleCore(value);
+            if (timer != null)
+            {
+                if (value)
+                    timer.Start();
+                else
+                    timer.Stop();
             }
         }
         protected override void OnPaint(PaintEventArgs e)

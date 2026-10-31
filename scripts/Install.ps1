@@ -1,4 +1,4 @@
-param([string]$Source,[switch]$MigrateLegacy,[switch]$NoLaunch)
+param([string]$Source,[switch]$MigrateLegacy,[switch]$NoLaunch,[switch]$ForceRestart)
 $ErrorActionPreference='Stop'
 $root=Split-Path -Parent $PSScriptRoot
 if(-not $Source){$Source=Join-Path $root 'app';if(-not(Test-Path -LiteralPath $Source)){$Source=Join-Path $root 'artifacts\app'}}
@@ -10,7 +10,7 @@ New-Item -ItemType Directory -Path $install,$data -Force | Out-Null
 $current=Join-Path $install 'WinDynamicIsland.exe'
 Get-Process WinDynamicIsland -ErrorAction SilentlyContinue | Where-Object {$_.Path -eq $current} | ForEach-Object {
     Start-Process -FilePath $current -ArgumentList '--exit' -WindowStyle Hidden -Wait
-    if(-not $_.WaitForExit(12000)){throw 'Close Win Dynamic Island and run setup again'}
+    if(-not $_.WaitForExit(12000)){if($ForceRestart -and $_.Path -eq $current){Stop-Process -InputObject $_ -Force}else{throw 'Close Win Dynamic Island and run setup again'}}
 }
 Get-Process IslandGuard -ErrorAction SilentlyContinue | Where-Object {$_.Path -eq (Join-Path $install 'IslandGuard.exe')} | Stop-Process
 if($MigrateLegacy){

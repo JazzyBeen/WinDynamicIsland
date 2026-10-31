@@ -6,6 +6,58 @@ namespace WinDynamicIsland.Core
 {
     public sealed class AppSettings
     {
+        public string NotificationMode
+        {
+            get; set;
+        }
+        public string[] NotificationApps
+        {
+            get; set;
+        }
+        public bool NotificationSelectionConfigured
+        {
+            get; set;
+        }
+        public bool GlassStyle
+        {
+            get; set;
+        }
+        public bool VolumeEnabled
+        {
+            get; set;
+        }
+        public bool ReplaceSystemVolumeFlyout
+        {
+            get; set;
+        }
+        public bool MicrophoneEnabled
+        {
+            get; set;
+        }
+        public bool F7MicrophoneIndicator
+        {
+            get; set;
+        }
+        public bool F7ControlsMicrophone
+        {
+            get; set;
+        }
+        public bool CapsLockEnabled
+        {
+            get; set;
+        }
+        public bool KeyboardLayoutEnabled
+        {
+            get; set;
+        }
+        public bool VpnStatusEnabled
+        {
+            get; set;
+        }
+        public string VpnAdapterId
+        {
+            get; set;
+        }
         public int SchemaVersion
         {
             get; set;
@@ -155,6 +207,11 @@ namespace WinDynamicIsland.Core
             WindowsVpnProfile = "";
             ConnectExecutable = ConnectArguments = DisconnectExecutable = DisconnectArguments = StatusExecutable = StatusArguments = "";
             VpnHotkeyEnabled = true;
+            NotificationMode = "Selected";
+            NotificationApps = new string[0];
+            GlassStyle = VolumeEnabled = MicrophoneEnabled = F7MicrophoneIndicator = true;
+            ReplaceSystemVolumeFlyout = true;
+            VpnAdapterId = "";
         }
         public void Validate()
         {
@@ -166,8 +223,13 @@ namespace WinDynamicIsland.Core
             NotificationSeconds = Clamp(NotificationSeconds, 2, 20);
             MediaCollapseSeconds = Clamp(MediaCollapseSeconds, 2, 15);
             BatteryThreshold = Clamp(BatteryThreshold, 5, 50);
-            if (VpnProvider != "Sota" && VpnProvider != "Windows" && VpnProvider != "Command")
+            if (VpnProvider != "Sota" && VpnProvider != "Windows" && VpnProvider != "Command" && VpnProvider != "Adapter")
                 VpnProvider = "None";
+            NotificationMode = NotificationMode == "All" ? "All" : "Selected";
+            if (NotificationMode == "All")
+                SuppressWindowsBanners = true;
+            NotificationApps = NotificationApps ?? new string[0];
+            VpnAdapterId = VpnAdapterId ?? "";
             VpnName = string.IsNullOrWhiteSpace(VpnName) ? "VPN" : VpnName.Trim();
         }
         static int Clamp(int value, int low, int high)

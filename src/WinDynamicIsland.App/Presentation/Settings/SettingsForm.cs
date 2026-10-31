@@ -8,7 +8,7 @@ using WinDynamicIsland.Core;
 
 namespace WinDynamicIsland
 {
-    internal sealed class SettingsForm : Form
+    internal sealed partial class SettingsForm : Form
     {
         readonly Action<AppSettings> apply;
         AppSettings draft;
@@ -16,9 +16,10 @@ namespace WinDynamicIsland
         readonly FlowLayoutPanel navigation = new FlowLayoutPanel();
         readonly List<Action> collect = new List<Action>();
         readonly Label heading = new Label(), subtitle = new Label();
-        readonly Button save = new Button();
+        readonly GlassButton save = new GlassButton { Primary = true };
         FlowLayoutPanel body; string section = "General"; bool rebuilding;
-        readonly Color background = Color.FromArgb(15, 16, 19), surface = Color.FromArgb(27, 29, 34), muted = Color.FromArgb(155, 161, 174), accent = Color.FromArgb(127, 226, 184);
+        bool closingForExit;
+        readonly Color background = Color.Black, surface = Color.Black, muted = IslandTheme.Secondary, accent = Color.White;
         [System.Runtime.InteropServices.DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
         protected override void OnHandleCreated(EventArgs e)
         {
@@ -27,6 +28,8 @@ namespace WinDynamicIsland
             {
                 int dark = 1;
                 DwmSetWindowAttribute(Handle, 20, ref dark, 4);
+                int black = 0;
+                DwmSetWindowAttribute(Handle, 35, ref black, 4);
             }
             catch { }
         }
@@ -40,7 +43,7 @@ namespace WinDynamicIsland
             MinimumSize = new Size(860, 680);
             BackColor = background;
             ForeColor = Color.White;
-            Font = new Font("Segoe UI", 10);
+            Font = new Font("Segoe UI Variable Text", 10);
             AutoScaleMode = AutoScaleMode.Dpi;
             try
             {
@@ -52,7 +55,7 @@ namespace WinDynamicIsland
             navigation.Padding = new Padding(18, 22, 14, 16);
             navigation.FlowDirection = FlowDirection.TopDown;
             navigation.WrapContents = false;
-            navigation.BackColor = Color.FromArgb(20, 21, 25);
+            navigation.BackColor = Color.Black;
             Controls.Add(content);
             Controls.Add(navigation);
             content.Dock = DockStyle.Fill;
@@ -62,7 +65,7 @@ namespace WinDynamicIsland
         }
         Button Button(string text, Action click)
         {
-            var button = new Button { Text = text, FlatStyle = FlatStyle.Flat, BackColor = surface, ForeColor = Color.White, Height = 38, Width = 550, Cursor = Cursors.Hand, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(12, 0, 0, 0), Margin = new Padding(0, 7, 0, 10) };
+            var button = new GlassButton { Text = text, FlatStyle = FlatStyle.Flat, BackColor = surface, ForeColor = Color.White, Height = 38, Width = 620, Cursor = Cursors.Hand, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(12, 0, 0, 0), Margin = new Padding(0, 7, 0, 10) };
             button.FlatAppearance.BorderSize = 0;
             button.Click += delegate
             {
@@ -76,8 +79,10 @@ namespace WinDynamicIsland
         }
         void BuildNavigation()
         {
+            foreach (Control old in new List<Control>(System.Linq.Enumerable.Cast<Control>(navigation.Controls)))
+                old.Dispose();
             navigation.Controls.Clear();
-            var mark = new Label { Text = "●  WIN DYNAMIC\n     ISLAND", Font = new Font("Segoe UI", 12, FontStyle.Bold), ForeColor = accent, Width = 184, Height = 78, Margin = new Padding(0, 0, 0, 20) };
+            var mark = new Label { Text = "Dynamic Island", Font = new Font("Segoe UI Variable Display", 12, FontStyle.Bold), ForeColor = accent, Width = 184, Height = 58, Margin = new Padding(0, 0, 0, 24) };
             navigation.Controls.Add(mark);
             foreach (string key in new[] { "General", "Appearance", "Media", "Notifications", "Devices", "VPN", "About" })
             {
@@ -86,11 +91,12 @@ namespace WinDynamicIsland
                 button.Width = 184;
                 button.Height = 44;
                 button.Margin = new Padding(0, 2, 0, 2);
-                button.BackColor = key == section ? surface : navigation.BackColor;
+                ((GlassButton)button).Navigation = true;
+                ((GlassButton)button).Selected = key == section;
                 button.Tag = key;
                 navigation.Controls.Add(button);
             }
-            navigation.Controls.Add(new Label { Text = "2.0  ·  Windows", ForeColor = muted, Width = 180, Height = 32, Margin = new Padding(12, 32, 0, 0) });
+            navigation.Controls.Add(new Label { Text = "2.1  ·  Windows", ForeColor = muted, Width = 180, Height = 32, Margin = new Padding(12, 32, 0, 0) });
         }
         void Collect()
         {
@@ -108,14 +114,15 @@ namespace WinDynamicIsland
             content.SuspendLayout();
             if (save.Parent != null)
                 save.Parent.Controls.Remove(save);
-            foreach (Control previous in content.Controls)
+            foreach (Control previous in new List<Control>(System.Linq.Enumerable.Cast<Control>(content.Controls)))
             {
                 if (previous != heading && previous != subtitle)
                     previous.Dispose();
             }
             content.Controls.Clear();
             heading.Text = L.T(key);
-            heading.Font = new Font("Segoe UI", 22, FontStyle.Bold);
+            if (heading.Font.Size < 20)
+                heading.Font = new Font("Segoe UI Variable Display", 25, FontStyle.Bold);
             heading.AutoSize = false;
             heading.Dock = DockStyle.Top;
             heading.Height = 48;
@@ -128,9 +135,11 @@ namespace WinDynamicIsland
             save.FlatStyle = FlatStyle.Flat;
             save.FlatAppearance.BorderSize = 0;
             save.BackColor = accent;
-            save.ForeColor = Color.FromArgb(10, 28, 21);
-            save.Font = new Font(Font, FontStyle.Bold);
-            save.Size = new Size(190, 38);
+            save.ForeColor = Color.Black;
+            save.TextAlign = ContentAlignment.MiddleCenter;
+            if (!save.Font.Bold)
+                save.Font = new Font(Font, FontStyle.Bold);
+            save.Size = new Size(190, 42);
             save.Anchor = AnchorStyles.Right | AnchorStyles.Top;
             save.Location = new Point(footer.Width - 190, 18);
             footer.Resize += delegate
@@ -140,7 +149,7 @@ namespace WinDynamicIsland
             save.Click -= Save;
             save.Click += Save;
             footer.Controls.Add(save);
-            body = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true, Padding = new Padding(0, 12, 8, 12) };
+            body = new IslandScrollPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true, Padding = new Padding(0, 12, 8, 12) };
             content.Controls.Add(body);
             content.Controls.Add(footer);
             content.Controls.Add(subtitle);
@@ -157,6 +166,7 @@ namespace WinDynamicIsland
             {
                 Number("TopGap", draft.TopGap, 2, 48, v => draft.TopGap = v);
                 Number("Blur", draft.MotionBlur, 0, 48, v => draft.MotionBlur = v);
+                Check("GlassStyle", draft.GlassStyle, v => draft.GlassStyle = v);
                 Check("Settle", draft.SettleAnimation, v => draft.SettleAnimation = v);
                 var names = new List<string>();
                 for (int i = 0; i < Screen.AllScreens.Length; i++)
@@ -176,13 +186,23 @@ namespace WinDynamicIsland
             }
             else if (key == "Notifications")
             {
-                Check("Telegram", draft.TelegramEnabled, v => draft.TelegramEnabled = v);
-                Check("Codex", draft.CodexEnabled, v => draft.CodexEnabled = v);
+                Choice("NotificationRoute", new[] { L.T("SelectedApps"), L.T("AllApps") }, draft.NotificationMode == "All" ? 1 : 0, i => draft.NotificationMode = i == 1 ? "All" : "Selected", false);
+                Help("RoutingHelp");
+                NotificationApps();
                 Check("CodexBackground", draft.CodexBackgroundOnly, v => draft.CodexBackgroundOnly = v);
-                Check("Suppress", draft.SuppressWindowsBanners, v => draft.SuppressWindowsBanners = v);
+                if (draft.NotificationMode != "All")
+                    Check("Suppress", draft.SuppressWindowsBanners, v => draft.SuppressWindowsBanners = v);
             }
             else if (key == "Devices")
             {
+                Check("VolumeHud", draft.VolumeEnabled, v => draft.VolumeEnabled = v);
+                Check("ReplaceVolume", draft.ReplaceSystemVolumeFlyout, v => draft.ReplaceSystemVolumeFlyout = v);
+                Check("MicrophoneHud", draft.MicrophoneEnabled, v => draft.MicrophoneEnabled = v);
+                Check("F7Indicator", draft.F7MicrophoneIndicator, v => draft.F7MicrophoneIndicator = v);
+                Check("F7Control", draft.F7ControlsMicrophone, v => draft.F7ControlsMicrophone = v);
+                Help("F7Help");
+                Check("CapsIndicator", draft.CapsLockEnabled, v => draft.CapsLockEnabled = v);
+                Check("LayoutIndicator", draft.KeyboardLayoutEnabled, v => draft.KeyboardLayoutEnabled = v);
                 Check("Headphones", draft.HeadphonesEnabled, v => draft.HeadphonesEnabled = v);
                 Check("Battery", draft.BatteryEnabled, v => draft.BatteryEnabled = v);
                 Number("Threshold", draft.BatteryThreshold, 5, 50, v => draft.BatteryThreshold = v);
@@ -191,7 +211,7 @@ namespace WinDynamicIsland
             else if (key == "VPN")
             {
                 Check("VpnEnabled", draft.VpnEnabled, v => draft.VpnEnabled = v);
-                Choice("Provider", new[] { L.T("Nothing"), "Sota VPN", L.T("WindowsVpn"), L.T("CustomCli") }, Array.IndexOf(new[] { "None", "Sota", "Windows", "Command" }, draft.VpnProvider), i => draft.VpnProvider = new[] { "None", "Sota", "Windows", "Command" }[i], false);
+                Choice("Provider", new[] { L.T("Nothing"), "Sota VPN", L.T("WindowsVpn"), L.T("CustomCli"), L.T("AdapterVpn") }, Array.IndexOf(new[] { "None", "Sota", "Windows", "Command", "Adapter" }, draft.VpnProvider), i => draft.VpnProvider = new[] { "None", "Sota", "Windows", "Command", "Adapter" }[i], false);
                 TextBox("VpnName", draft.VpnName, v => draft.VpnName = v);
                 Check("Hotkey", draft.VpnHotkeyEnabled, v => draft.VpnHotkeyEnabled = v);
                 if (draft.VpnProvider == "Windows")
@@ -208,9 +228,11 @@ namespace WinDynamicIsland
                     Help(valid ? "ProfileReady" : "ProfileNeedsSetup");
                     body.Controls.Add(Button(L.T("SotaSetup"), () => { string exe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SotaProfileSetup.exe"); Process.Start(new ProcessStartInfo(exe, "--language " + draft.Language) { UseShellExecute = true, Verb = "runas" }); }));
                 }
-                else if (draft.VpnProvider == "Command")
+                else if (draft.VpnProvider == "Command" || draft.VpnProvider == "Adapter")
                 {
-                    Help("CommandHelp");
+                    Help("UniversalVpnHelp");
+                    if (draft.VpnProvider == "Adapter")
+                        AdapterChoice();
                     TextBox("ConnectExe", draft.ConnectExecutable, v => draft.ConnectExecutable = v);
                     TextBox("ConnectArgs", draft.ConnectArguments, v => draft.ConnectArguments = v);
                     TextBox("DisconnectExe", draft.DisconnectExecutable, v => draft.DisconnectExecutable = v);
@@ -220,6 +242,7 @@ namespace WinDynamicIsland
                 }
                 else
                     Help("VpnNotConfigured");
+                Check("VpnStatusHud", draft.VpnStatusEnabled, v => draft.VpnStatusEnabled = v);
             }
             else
             {
@@ -227,8 +250,7 @@ namespace WinDynamicIsland
                 body.Controls.Add(Button(L.T("DataFolder"), () => Process.Start("explorer.exe", Program.DataPath)));
                 body.Controls.Add(Button("GitHub · WinDynamicIsland", () => Process.Start("https://github.com/JazzyBeen/WinDynamicIsland")));
                 body.Controls.Add(Button(L.T("Preview"), () => Program.Presenter.Status("Win Dynamic Island", L.T("Ready"), true, false)));
-                string status = File.Exists(Path.Combine(Program.DataPath, "host.txt")) ? File.ReadAllText(Path.Combine(Program.DataPath, "host.txt")) : "";
-                body.Controls.Add(new Label { Text = status, ForeColor = muted, Width = 550, Height = 70, Margin = new Padding(0, 15, 0, 0) });
+                body.Controls.Add(new Label { Text = L.T("Running"), ForeColor = IslandTheme.Accent, Width = 620, Height = 44, Margin = new Padding(0, 12, 0, 0) });
             }
             BuildNavigation();
             content.ResumeLayout();
@@ -236,38 +258,37 @@ namespace WinDynamicIsland
         }
         void Help(string key)
         {
-            var label = new Label { Text = L.T(key), ForeColor = muted, Width = 550, AutoSize = false, Margin = new Padding(0, 8, 0, 14) };
-            label.Height = TextRenderer.MeasureText(label.Text, Font, new Size(550, 0), TextFormatFlags.WordBreak).Height + 12;
+            var label = new Label { Text = L.T(key), ForeColor = muted, Width = 620, AutoSize = false, Margin = new Padding(0, 8, 0, 14) };
+            label.Height = TextRenderer.MeasureText(label.Text, Font, new Size(620, 0), TextFormatFlags.WordBreak).Height + 12;
             body.Controls.Add(label);
         }
         void Check(string key, bool value, Action<bool> set)
         {
-            var box = new CheckBox { Text = L.T(key), Checked = value, Width = 550, Height = 50, Padding = new Padding(14, 0, 12, 0), Margin = new Padding(0, 4, 0, 4), BackColor = surface, FlatStyle = FlatStyle.Standard };
+            var box = new ToggleSwitch { Text = L.T(key), Checked = value, Width = 620, Height = 60, Padding = new Padding(14, 0, 12, 0), Margin = new Padding(0, 4, 0, 4), BackColor = surface, FlatStyle = FlatStyle.Standard };
             body.Controls.Add(box);
             collect.Add(() => set(box.Checked));
         }
         Panel Row(string key)
         {
-            var panel = new Panel { Width = 550, Height = 65, BackColor = surface, Margin = new Padding(0, 4, 0, 4) };
-            panel.Controls.Add(new Label { Text = L.T(key), AutoSize = false, Width = 350, Height = 42, Location = new Point(14, 17) });
+            var panel = new GlassCard { Width = 620, Height = 65, BackColor = surface, Margin = new Padding(0, 4, 0, 4) };
+            panel.Controls.Add(new Label { Text = L.T(key), BackColor = Color.Transparent, AutoSize = false, Width = 350, Height = 42, Location = new Point(14, 17) });
             body.Controls.Add(panel);
             return panel;
         }
         void Number(string key, int value, int min, int max, Action<int> set)
         {
-            var row = Row(key);
-            var input = new NumericUpDown { Minimum = min, Maximum = max, Value = Math.Max(min, Math.Min(max, value)), Location = new Point(415, 18), Width = 115, BackColor = background, ForeColor = Color.White, BorderStyle = BorderStyle.FixedSingle };
-            row.Controls.Add(input);
-            collect.Add(() => set((int)input.Value));
+            var input = new SnapSlider(L.T(key), value, min, max) { Font = Font, Margin = new Padding(0, 5, 0, 5) };
+            body.Controls.Add(input);
+            collect.Add(() => set(input.Value));
         }
         void Choice(string key, string[] values, int index, Action<int> set, bool language)
         {
             var row = Row(key);
             row.Controls[0].Width = 275;
-            var input = new SelectionButton(values, Math.Max(0, index)) { Location = new Point(305, 16), Width = 225, Height = 34, BackColor = background, ForeColor = Color.White, AccessibleName = L.T(key) };
+            var input = new SelectionButton(values, Math.Max(0, index)) { Location = new Point(335, 16), Width = 265, Height = 34, BackColor = background, ForeColor = Color.White, AccessibleName = L.T(key) };
             row.Controls.Add(input);
             collect.Add(() => set(input.SelectedIndex));
-            if (language || key == "Provider")
+            if (language || key == "Provider" || key == "NotificationRoute")
                 input.SelectionChanged += delegate
                 {
                     if (rebuilding)
@@ -284,7 +305,7 @@ namespace WinDynamicIsland
             row.Height = 84;
             row.Controls[0].Height = 25;
             row.Controls[0].Top = 8;
-            var input = new TextBox { Text = value ?? "", Location = new Point(14, 41), Width = 516, BackColor = background, ForeColor = Color.White, BorderStyle = BorderStyle.FixedSingle };
+            var input = new TextBox { Text = value ?? "", Location = new Point(14, 41), Width = 584, BackColor = background, ForeColor = Color.White, BorderStyle = BorderStyle.FixedSingle };
             row.Controls.Add(input);
             collect.Add(() => set(input.Text));
         }
@@ -307,12 +328,35 @@ namespace WinDynamicIsland
             L.Language = Program.Settings.Language;
             base.OnFormClosed(e);
         }
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            if (!closingForExit && e.CloseReason == CloseReason.UserClosing)
+            {
+                e.Cancel = true;
+                Hide();
+                L.Language = Program.Settings.Language;
+                return;
+            }
+            base.OnFormClosing(e);
+        }
+        internal void CloseForExit()
+        {
+            closingForExit = true;
+            Close();
+        }
+        internal void ReloadSaved()
+        {
+            collect.Clear();
+            draft = Program.Settings.Clone();
+            L.Language = draft.Language;
+            ShowSection(section);
+        }
         internal void Export(string folder)
         {
             Directory.CreateDirectory(folder);
             Show();
             Application.DoEvents();
-            foreach (string page in new[] { "General", "VPN" })
+            foreach (string page in new[] { "General", "Appearance", "Notifications", "Devices", "VPN" })
             {
                 ShowSection(page);
                 Application.DoEvents();
@@ -325,8 +369,9 @@ namespace WinDynamicIsland
             Close();
         }
     }
-    internal sealed class SelectionButton : Button
+    internal sealed class SelectionButton : GlassButton
     {
+        readonly ContextMenuStrip menu;
         readonly string[] values; internal int SelectedIndex
         {
             get; private set;
@@ -343,6 +388,24 @@ namespace WinDynamicIsland
             Padding = new Padding(10, 0, 0, 0);
             Cursor = Cursors.Hand;
             AccessibleRole = AccessibleRole.ComboBox;
+            menu = new ContextMenuStrip { BackColor = Color.FromArgb(22, 22, 24), ForeColor = Color.White };
+            IslandMenuRenderer.Style(menu);
+            for (int i = 0; i < values.Length; i++)
+            {
+                int item = i;
+                var option = new ToolStripMenuItem(values[i]) { Padding = new Padding(12, 7, 18, 7) };
+                option.Click += delegate
+                {
+                    var owner = FindForm();
+                    if (owner != null && !owner.IsDisposed && owner.IsHandleCreated)
+                        owner.BeginInvoke((Action)delegate
+                        {
+                            if (!IsDisposed)
+                                SelectIndex(item);
+                        });
+                };
+                menu.Items.Add(option);
+            }
         }
         internal void SelectIndex(int index)
         {
@@ -356,22 +419,20 @@ namespace WinDynamicIsland
         protected override void OnClick(EventArgs e)
         {
             base.OnClick(e);
-            var menu = new ContextMenuStrip { BackColor = BackColor, ForeColor = ForeColor };
-            for (int i = 0; i < values.Length; i++)
+            menu.Font = Font;
+            for (int i = 0; i < menu.Items.Count; i++)
             {
-                int item = i;
-                var option = new ToolStripMenuItem(values[i]) { Checked = i == SelectedIndex };
-                option.Click += delegate
-                {
-                    SelectIndex(item);
-                };
-                menu.Items.Add(option);
+                var item = (ToolStripMenuItem)menu.Items[i];
+                item.Checked = false;
+                item.Text = (i == SelectedIndex ? "✓  " : "    ") + values[i];
             }
-            menu.Closed += delegate
-            {
-                menu.Dispose();
-            };
             menu.Show(this, new Point(0, Height));
+        }
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+                menu.Dispose();
+            base.Dispose(disposing);
         }
     }
 }

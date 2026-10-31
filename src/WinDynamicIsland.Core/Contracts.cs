@@ -6,11 +6,11 @@ namespace WinDynamicIsland.Core
 {
     public enum NotificationApp
     {
-        Telegram, Codex, System
+        Telegram, Codex, System, Other
     }
     public enum CompactNoticeKind
     {
-        None, Headphones, Battery, Charging
+        None, Headphones, Battery, Charging, Volume, Microphone, CapsLock, KeyboardLayout
     }
     public sealed class MediaSnapshot : IDisposable
     {

@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Windows.Forms;
@@ -35,15 +36,16 @@ namespace WinDynamicIsland
         readonly NotifyIcon tray = new NotifyIcon();
         readonly SynchronizationContext ui = new WindowsFormsSynchronizationContext();
         readonly HostWindow commands;
-        ModuleHost modules; SettingsForm settings; bool busy, quitting;
+        ModuleCoordinator modules = new ModuleCoordinator(); SettingsForm settings; bool busy, quitting;
         internal AppHost()
         {
             commands = new HostWindow(Dispatch);
             tray.Icon = System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath);
             tray.Text = "Win Dynamic Island";
-            tray.DoubleClick += delegate
+            tray.MouseClick += delegate (object sender, MouseEventArgs e)
             {
-                OpenSettings();
+                if (e.Button == MouseButtons.Left)
+                    OpenSettings();
             };
         }
         internal void Start(string action)
@@ -56,7 +58,7 @@ namespace WinDynamicIsland
             if (File.Exists(guard))
                 using (var owner = Process.GetCurrentProcess())
                     Process.Start(new ProcessStartInfo(guard, owner.Id + " " + owner.StartTime.ToUniversalTime().Ticks) { UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden });
-            Program.Log("host.txt", "Running; version=2.0; PID=" + Process.GetCurrentProcess().Id);
+            Program.Log("host.txt", "Running; version=2.1; PID=" + Process.GetCurrentProcess().Id);
             if (Program.Settings.ShowStartupIsland)
                 Program.Presenter.Status("Win Dynamic Island", L.T("Ready"), true, false);
             if (action == "--settings")
@@ -66,26 +68,28 @@ namespace WinDynamicIsland
         }
         void ConfigureModules()
         {
-            if (modules != null)
-                modules.Dispose();
-            modules = new ModuleHost((id, error) => Program.Log("module-" + id + ".txt", error.ToString()));
+            var next = new Dictionary<string, Func<IDisposable>>();
             if (Program.Settings.BrowserEnabled && Program.Settings.MediaEnabled)
-                modules.Add(new FeatureModule("browser", () => new BrowserLoopback()));
+                next["browser"] = () => new BrowserLoopback();
             if (Program.Settings.MediaEnabled)
-                modules.Add(new FeatureModule("media", () => new MediaSessionMonitor()));
+                next["media"] = () => new MediaSessionMonitor();
             if (Program.Settings.BatteryEnabled || Program.Settings.HeadphonesEnabled || Program.Settings.ChargingEnabled)
-                modules.Add(new FeatureModule("devices", () => new DeviceMonitor()));
-            if (Program.Settings.TelegramEnabled)
-                modules.Add(new FeatureModule("telegram", () => new DesktopNotifications(NotificationApp.Telegram)));
-            if (Program.Settings.CodexEnabled)
-                modules.Add(new FeatureModule("codex", () => new DesktopNotifications(NotificationApp.Codex)));
-            if (Program.Settings.BatteryEnabled)
-                modules.Add(new FeatureModule("power", () => new DesktopNotifications(NotificationApp.System)));
+                next["devices"] = () => new DeviceMonitor();
+            if (Program.Settings.NotificationMode == "All" || Program.Settings.NotificationApps.Length > 0 || !Program.Settings.NotificationSelectionConfigured && (Program.Settings.TelegramEnabled || Program.Settings.CodexEnabled))
+                next["notifications"] = () => new NotificationRouter();
+            if (Program.Settings.VolumeEnabled || Program.Settings.MicrophoneEnabled)
+                next["audio"] = () => new AudioMonitor();
+            if (Program.Settings.VolumeEnabled || Program.Settings.F7MicrophoneIndicator && Program.Settings.MicrophoneEnabled || Program.Settings.CapsLockEnabled || Program.Settings.KeyboardLayoutEnabled)
+                next["keys"] = () => new KeyboardIndicators();
+            if (Program.Settings.VpnStatusEnabled)
+                next["vpn-status"] = () => new VpnStatusMonitor();
+            modules.Update(next);
             commands.SetHotkey(Program.Settings.VpnEnabled && Program.Settings.VpnHotkeyEnabled);
         }
         void ConfigureTray()
         {
             var menu = new ContextMenuStrip();
+            IslandMenuRenderer.Style(menu);
             menu.Items.Add(L.T("OpenSettings"), null, delegate
             {
                 OpenSettings();
@@ -121,6 +125,8 @@ namespace WinDynamicIsland
         {
             if (settings == null || settings.IsDisposed)
                 settings = new SettingsForm(Apply);
+            else if (!settings.Visible)
+                settings.ReloadSaved();
             settings.Show();
             if (settings.WindowState == FormWindowState.Minimized)
                 settings.WindowState = FormWindowState.Normal;
@@ -179,13 +185,14 @@ namespace WinDynamicIsland
                 return;
             quitting = true;
             if (settings != null)
-                settings.Close();
+                settings.CloseForExit();
             tray.Visible = false;
             if (modules != null)
                 modules.Dispose();
             modules = null;
             commands.Dispose();
             BatteryBannerPolicy.Restore();
+            NotificationRoutingPolicy.RestoreAll();
             foreach (NotificationApp app in Enum.GetValues(typeof(NotificationApp)))
                 DesktopNotifications.RestoreBanners(app);
             ExitThread();

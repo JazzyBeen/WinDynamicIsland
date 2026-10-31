@@ -240,7 +240,7 @@ namespace WinDynamicIsland
             double amount = MediaAmount(now);
             var current = MediaMotionAt(now);
             var trail = MediaMotionAt(now.AddMilliseconds(-MotionExposureMs));
-            long tick = now.Ticks / TimeSpan.TicksPerMillisecond / 33;
+            long tick = now.Ticks / TimeSpan.TicksPerMillisecond / (amount < 0.1 ? 50 : 33);
             bool movingBars = mediaData != null && mediaData.Playing && (amount < 0.1 || amount > 0.85 && mediaData.CanSeek);
             if (!dirty && current == previousFrame && trail == previousTrail && (!movingBars || tick == mediaPaintTick))
                 return;
@@ -447,6 +447,11 @@ namespace WinDynamicIsland
 
         void DrawCompactNotice(Graphics g, int width, int height)
         {
+            if (compactKind == CompactNoticeKind.Charging)
+            {
+                DrawChargingNotice(g, width, height);
+                return;
+            }
             if (compactKind == CompactNoticeKind.Headphones)
             {
                 using (var pen = new Pen(Color.FromArgb(225, 229, 234), 3))
@@ -501,6 +506,11 @@ namespace WinDynamicIsland
                 island.compactValue = 20;
                 using (var face = island.DrawFace(260, 40, 1))
                     face.Save(Path.Combine(folder, "battery.png"));
+                island.compactKind = CompactNoticeKind.Charging;
+                island.compactValue = 100;
+                island.title = L.T("ChargingOn");
+                using (var face = island.DrawFace(island.CompactNoticeWidth, 40, 1))
+                    face.Save(Path.Combine(folder, "charging.png"));
             }
         }
     }

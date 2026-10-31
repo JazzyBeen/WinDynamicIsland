@@ -6,6 +6,31 @@ namespace WinDynamicIsland.Core
     public static class L
     {
         public static string Language = "ru";
+        static readonly Dictionary<string, string[]> extra = new Dictionary<string, string[]> {
+            {"GlassStyle",new[]{"Стеклянные карточки","Glass surfaces"}},
+            {"NotificationRoute",new[]{"Показывать через остров","Route through the island"}},
+            {"SelectedApps",new[]{"Выбранные","Selected apps"}}, {"AllApps",new[]{"Все приложения","All apps"}},
+            {"RoutingHelp",new[]{"Выберите отправителей ниже. В режиме «Все приложения» баннеры Windows заменяются островом; уведомления остаются в центре уведомлений. Собственные всплывающие окна приложений настраиваются в самих приложениях.","Choose senders below. All apps mode replaces Windows banners with the island and keeps Notification Center delivery. Apps that draw their own popups must be configured in the app itself."}},
+            {"LoadingApps",new[]{"Загружаем список отправителей…","Loading notification senders…"}},
+            {"SearchApps",new[]{"Поиск приложений","Search apps"}},
+            {"WindowsSystem",new[]{"Система Windows","Windows system"}},
+            {"ChargingShort",new[]{"Заряжается","Charging"}}, {"OnBatteryShort",new[]{"От батареи","On battery"}},
+            {"VolumeHud",new[]{"Громкость: остров со шкалой","Volume level island"}},
+            {"ReplaceVolume",new[]{"Остров вместо индикатора громкости Windows","Replace Windows volume-key flyout"}},
+            {"MicrophoneHud",new[]{"Состояние микрофона","Microphone state island"}},
+            {"F7Indicator",new[]{"Показывать микрофон при нажатии F7","Show microphone state on F7"}},
+            {"F7Control",new[]{"Использовать F7 для переключения микрофона","Use F7 to toggle microphone mute"}},
+            {"F7Help",new[]{"Если F7 уже управляет микрофоном ноутбука, оставьте переключение выключенным: остров покажет фактическое состояние. Включите его, если хотите назначить F7 эту функцию через остров.","If your laptop already uses F7 for microphone mute, leave the toggle option off: the island observes the actual state. Enable it to assign microphone mute to F7 through the island."}},
+            {"CapsIndicator",new[]{"Индикатор Caps Lock","Caps Lock indicator"}},
+            {"LayoutIndicator",new[]{"Смена языка клавиатуры","Keyboard language changes"}},
+            {"Volume",new[]{"Громкость","Volume"}}, {"MicOff",new[]{"Микрофон выключен","Microphone muted"}}, {"MicOn",new[]{"Микрофон включён","Microphone on"}},
+            {"AdapterVpn",new[]{"Любой клиент · адаптер","Any client · adapter"}},
+            {"VpnAdapter",new[]{"Адаптер VPN","VPN adapter"}}, {"ChooseAdapter",new[]{"Выбрать адаптер…","Choose an adapter…"}},
+            {"VpnStatusHud",new[]{"Сообщать об изменении состояния VPN","Show VPN state changes"}},
+            {"UniversalVpnHelp",new[]{"Выберите сетевой адаптер своего VPN: остров сможет видеть его состояние независимо от марки клиента. Для подключения и отключения укажите команды клиента. Если у клиента нет CLI или API, автоматическое переключение без его окна недоступно. Команды запускаются только по вашему нажатию.","Select your VPN network adapter to observe its state independently of the client brand. Supply the client's commands for connect and disconnect. Clients without CLI or API cannot be toggled automatically without their UI. Connection commands run only when you request them."}},
+            {"VpnNeedsCommands",new[]{"Укажите команды подключения и отключения VPN в настройках. Состояние адаптера доступно без команд.","Configure your VPN connect and disconnect commands. Adapter status works without commands."}},
+            {"NewNotification",new[]{"Новое уведомление","New notification"}}
+        };
         static readonly Dictionary<string, string[]> text = new Dictionary<string, string[]> {
             {"Settings",new[]{"Настройки","Settings"}}, {"General",new[]{"Основное","General"}},
             {"Appearance",new[]{"Оформление","Appearance"}}, {"Media",new[]{"Медиа","Media"}},
@@ -53,7 +78,7 @@ namespace WinDynamicIsland.Core
             {"Disconnecting",new[]{"Отключение…","Disconnecting…"}}, {"Error",new[]{"Ошибка","Error"}},
             {"VpnNotConfigured",new[]{"Выберите и настройте VPN в настройках","Choose and configure a VPN in settings"}},
             {"DataFolder",new[]{"Открыть папку данных","Open data folder"}},
-            {"AboutText",new[]{"Win Dynamic Island 2.0\r\nМедиа, уведомления, устройства и VPN — в одном острове.\r\nНастройки и личные профили хранятся только на этом компьютере.","Win Dynamic Island 2.0\r\nMedia, notifications, devices and VPN in one island.\r\nSettings and personal profiles stay on this computer."}},
+            {"AboutText",new[]{"Win Dynamic Island 2.1\r\nМедиа, уведомления, устройства и VPN — в одном острове.\r\nНастройки и личные профили хранятся только на этом компьютере.","Win Dynamic Island 2.1\r\nMedia, notifications, devices and VPN in one island.\r\nSettings and personal profiles stay on this computer."}},
             {"GeneralHelp",new[]{"Приложение работает в области уведомлений. Закрытие этого окна оставляет остров включённым. Новые настройки применяются после сохранения.","The app runs in the system tray. Closing this window keeps the island running. Save to apply changes."}},
             {"Nothing",new[]{"Не подключён","None"}}, {"WindowsVpn",new[]{"Windows VPN","Windows VPN"}},
             {"CustomCli",new[]{"Другой VPN (CLI)","Other VPN (CLI)"}},
@@ -80,7 +105,7 @@ namespace WinDynamicIsland.Core
         public static string T(string key)
         {
             string[] value;
-            return text.TryGetValue(key, out value) ? value[Language == "en" ? 1 : 0] : key;
+            return extra.TryGetValue(key, out value) || text.TryGetValue(key, out value) ? value[Language == "en" ? 1 : 0] : key;
         }
     }
 }

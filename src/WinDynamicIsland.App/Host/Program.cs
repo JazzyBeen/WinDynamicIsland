@@ -8,7 +8,7 @@ using System.Windows.Forms;
 using WinDynamicIsland.Core;
 
 [assembly: System.Reflection.AssemblyTitle("Win Dynamic Island")]
-[assembly: System.Reflection.AssemblyVersion("2.0.0.0")]
+[assembly: System.Reflection.AssemblyVersion("2.1.0.0")]
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("WinDynamicIsland.Tests")]
 namespace WinDynamicIsland
 {
@@ -60,7 +60,7 @@ namespace WinDynamicIsland
             Application.SetCompatibleTextRenderingDefault(false);
             if (args.Length > 0 && args[0] == "--check")
             {
-                Log("health.txt", "Version=2.0; Startup=" + StartupRegistration.IsEnabled + "; SotaProfile=" + File.Exists(ApiProfile.PathName));
+                Log("health.txt", "Version=2.1; Startup=" + StartupRegistration.IsEnabled + "; SotaProfile=" + File.Exists(ApiProfile.PathName));
                 return;
             }
             if (args.Length > 0 && args[0] == "--check-api")
@@ -85,6 +85,11 @@ namespace WinDynamicIsland
                 Island.ExportFeaturePreview(args[1]);
                 return;
             }
+            if (args.Length == 2 && args[0] == "--render-huds")
+            {
+                Island.ExportHudPreview(args[1]);
+                return;
+            }
             if (args.Length == 2 && args[0] == "--render-motion-frames")
             {
                 Island.ExportMotionPreview(args[1]);
@@ -92,6 +97,11 @@ namespace WinDynamicIsland
             }
             if (args.Length >= 2 && args[0] == "--render-settings")
             {
+                try
+                {
+                    NotificationCatalog.Refresh();
+                }
+                catch { }
                 if (args.Length == 3)
                 {
                     Settings.Language = args[2];

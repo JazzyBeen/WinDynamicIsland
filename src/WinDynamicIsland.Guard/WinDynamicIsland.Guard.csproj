@@ -4,5 +4,5 @@
     <ProjectReference Include="..\WinDynamicIsland.Core\WinDynamicIsland.Core.csproj"/>
     <Reference Include="System.Web.Extensions"/>
     <Compile Include="..\WinDynamicIsland.App\Integrations\Devices\BatteryBannerPolicy.cs" Link="BatteryBannerPolicy.cs"/>
-  </ItemGroup>
+  <Compile Include="..\WinDynamicIsland.App\Integrations\Notifications\NotificationRoutingPolicy.cs" Link="NotificationRoutingPolicy.cs"/></ItemGroup>
 </Project>

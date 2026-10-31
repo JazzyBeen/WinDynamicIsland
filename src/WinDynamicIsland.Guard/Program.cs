@@ -43,7 +43,7 @@ namespace WinDynamicIsland
                     return false;
                 GetWindowThreadProcessId(window, out id);
                 using (var process = Process.GetProcessById((int)id))
-                    return process.Id != oldId && string.Equals(process.MainModule.FileName, Path.Combine(DataPath, "WinDynamicIsland.exe"), StringComparison.OrdinalIgnoreCase);
+                    return process.Id != oldId && string.Equals(process.MainModule.FileName, Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "WinDynamicIsland.exe"), StringComparison.OrdinalIgnoreCase);
             }
             catch { return false; }
         }
@@ -62,6 +62,7 @@ namespace WinDynamicIsland
             {
                 BatteryBannerPolicy.Restore();
                 RestoreBanners();
+                NotificationRoutingPolicy.RestoreAll();
                 Log("battery-guard.txt", "Island stopped; Windows notification banners restored");
             }
             catch (Exception ex) { Log("battery-guard.txt", ex.GetType().Name); }
