@@ -4,6 +4,8 @@
     <AssemblyName>WinDynamicIsland</AssemblyName><ApplicationIcon>..\..\assets\WinDynamicIsland.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="..\..\assets\fonts\Inter-Regular.ttf"><LogicalName>InterRegular</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="..\..\assets\fonts\Inter-Bold.ttf"><LogicalName>InterBold</LogicalName></EmbeddedResource>
     <ProjectReference Include="..\WinDynamicIsland.Core\WinDynamicIsland.Core.csproj"/>
     <Reference Include="System.Web.Extensions"/><Reference Include="System.Security"/>
     <Reference Include="WindowsBase"><HintPath>$(FrameworkRoot)\WPF\WindowsBase.dll</HintPath></Reference>
@@ -21,5 +23,8 @@
     <EmbeddedResource Include="..\..\assets\bootstrap-icons-LICENSE"><LogicalName>MediaIconsLicense</LogicalName></EmbeddedResource>
     <Content Include="..\..\extensions\browser\*" Exclude="..\..\extensions\browser\connection.js"><Link>browser-extension\%(Filename)%(Extension)</Link><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Content Include="..\..\assets\codex-icon.png"><Link>codex-icon.png</Link><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="..\..\assets\fonts\LICENSE.txt"><Link>licenses\Inter-OFL.txt</Link><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="..\..\assets\bootstrap-icons-LICENSE"><Link>licenses\Bootstrap-MIT.txt</Link><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="..\..\assets\music\LICENSE-CC0.txt"><Link>licenses\Music-CC0.txt</Link><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
   </ItemGroup>
 </Project>

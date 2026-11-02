@@ -29,9 +29,14 @@ if($MigrateLegacy){
         $settings | ConvertTo-Json | Set-Content -LiteralPath $config -Encoding UTF8
     }
 }
-foreach($name in @('WinDynamicIsland.exe','IslandGuard.exe','SotaProfileSetup.exe')){Copy-Item -LiteralPath (Join-Path $Source $name) -Destination $install -Force}
+foreach($name in @('WinDynamicIsland.exe','IslandGuard.exe')){Copy-Item -LiteralPath (Join-Path $Source $name) -Destination $install -Force}
+if(Test-Path -LiteralPath (Join-Path $Source 'licenses')){Copy-Item (Join-Path $Source 'licenses') $install -Recurse -Force}
 Copy-Item (Join-Path $Source 'WinDynamicIsland.Core.dll') $install -Force
 Copy-Item (Join-Path $Source 'codex-icon.png') $data -Force
+if(Test-Path -LiteralPath (Join-Path $Source 'Music')){
+    New-Item -ItemType Directory -Path (Join-Path $data 'Music') -Force | Out-Null
+    Copy-Item (Join-Path $Source 'Music\*') (Join-Path $data 'Music') -Recurse -Force
+}
 $extension=Join-Path $install 'browser-extension';New-Item -ItemType Directory -Path $extension -Force | Out-Null
 Get-ChildItem (Join-Path $Source 'browser-extension') -File | Where-Object {$_.Name -ne 'connection.js'} | Copy-Item -Destination $extension -Force
 $shell=New-Object -ComObject WScript.Shell

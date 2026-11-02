@@ -40,13 +40,13 @@ namespace WinDynamicIsland
             pageHost.Dock = DockStyle.Fill;
             footer.Dock = DockStyle.Bottom;
             footer.Height = 60;
-            heading.Font = new Font("Segoe UI Variable Display", 25, FontStyle.Bold);
+            heading.Font = AppTypography.Create(25, FontStyle.Bold);
             heading.Dock = DockStyle.Top;
-            heading.Height = 48;
+            heading.Height = 68;
+            heading.TextAlign = ContentAlignment.MiddleLeft;
             subtitle.ForeColor = muted;
-            subtitle.Dock = DockStyle.Top;
-            subtitle.Height = 32;
-            pageHost.Controls.Add(subtitle);
+            subtitle.Dock = DockStyle.None;
+            subtitle.SetBounds(8, 28, 370, 25);
             pageHost.Controls.Add(heading);
             save.ForeColor = Color.Black;
             save.TextAlign = ContentAlignment.MiddleCenter;
@@ -56,9 +56,11 @@ namespace WinDynamicIsland
             save.Top = 18;
             save.Click += Save;
             footer.Controls.Add(save);
+            footer.Controls.Add(subtitle);
             footer.Resize += delegate
             {
                 save.Left = footer.ClientSize.Width - save.Width;
+                subtitle.Width = Math.Max(80, save.Left - 20);
             };
             content.Controls.Add(pageHost);
             content.Controls.Add(footer);
@@ -148,6 +150,8 @@ namespace WinDynamicIsland
         {
             if (disposing)
             {
+                autoSave.Dispose();
+                captureUi.Dispose();
                 revealTimer.Dispose();
                 transition.Dispose();
             }

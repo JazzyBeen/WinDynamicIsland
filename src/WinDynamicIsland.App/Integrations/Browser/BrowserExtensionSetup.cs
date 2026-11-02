@@ -16,7 +16,7 @@ namespace WinDynamicIsland
             foreach (string file in Directory.GetFiles(template))
             {
                 if (Path.GetFileName(file) != "connection.js")
-                    File.Copy(file, Path.Combine(target, Path.GetFileName(file)), true);
+                    WriteIfChanged(Path.Combine(target, Path.GetFileName(file)), File.ReadAllText(file));
             }
             string secret = Path.Combine(Program.DataPath, "browser-loopback-token.txt");
             if (!File.Exists(secret))
@@ -28,10 +28,18 @@ namespace WinDynamicIsland
             }
             string token = File.ReadAllText(secret).Trim();
             var json = new JavaScriptSerializer();
-            File.WriteAllText(Path.Combine(target, "connection.js"), "const ISLAND_ENDPOINT=\"http://127.0.0.1:48573\";\nconst ISLAND_TOKEN=" + json.Serialize(token) + ";\n");
+            WriteIfChanged(Path.Combine(target, "connection.js"), "const ISLAND_ENDPOINT=\"http://127.0.0.1:48573\";\nconst ISLAND_TOKEN=" + json.Serialize(token) + ";\n");
             if (open)
                 Process.Start("explorer.exe", target);
             return target;
+        }
+        static void WriteIfChanged(string path, string value)
+        {
+            if (File.Exists(path) && File.ReadAllText(path) == value) return;
+            string temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            File.WriteAllText(temporary, value, new System.Text.UTF8Encoding(false));
+            if (File.Exists(path)) File.Replace(temporary, path, null);
+            else File.Move(temporary, path);
         }
     }
 }

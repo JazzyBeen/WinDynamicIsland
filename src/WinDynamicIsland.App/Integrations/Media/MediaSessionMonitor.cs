@@ -53,6 +53,9 @@ namespace WinDynamicIsland
                 {
                     try
                     {
+                        var focus = sourceFilter == null ? FocusService.Read() : null;
+                        if (focus != null) { publish(focus); wasAvailable = true; Sleep(250); continue; }
+                        if (sourceFilter == null && !Program.Settings.MediaEnabled) { if (wasAvailable) { publish(null); wasAvailable = false; } Sleep(400); continue; }
                         var browser = sourceFilter == null && Program.Settings.BrowserEnabled ? BrowserMediaProvider.Read() : null;
                         if (browser != null && browser.Playing)
                         {

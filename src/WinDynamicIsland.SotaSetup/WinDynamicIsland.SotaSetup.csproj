@@ -4,5 +4,6 @@
     <ProjectReference Include="..\WinDynamicIsland.Core\WinDynamicIsland.Core.csproj"/>
     <Reference Include="System.Web.Extensions"/><Reference Include="System.Security"/>
     <Compile Include="..\WinDynamicIsland.App\Integrations\Vpn\Sota\ApiProfile.cs" Link="ApiProfile.cs"/>
+    <Compile Include="..\WinDynamicIsland.App\Integrations\Vpn\Sota\CaptureService.cs" Link="CaptureService.cs"/>
   </ItemGroup>
 </Project>

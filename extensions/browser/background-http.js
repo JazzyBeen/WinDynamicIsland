@@ -1,7 +1,7 @@
 importScripts('connection.js');
 const browserKind=navigator.userAgent.includes('YaBrowser')?'Yandex':navigator.userAgent.includes('Edg/')?'Edge':'Chrome';
 const sources=new Map(),relayFrames=new Set(),mainFrames=new Set();
-const diagnostic={version:'1.3.0',connected:false,relayFrames:0,mainFrames:0,players:0,error:''};
+const diagnostic={version:chrome.runtime.getManifest().version,connected:false,relayFrames:0,mainFrames:0,players:0,error:''};
 let polling=false,lastPush=0;
 function active(){const now=Date.now();for(const [key,item] of sources)if(now-item.updated>15000)sources.delete(key);return [...sources.values()].sort((a,b)=>Number(b.playing)-Number(a.playing)||b.activatedAt-a.activatedAt)[0];}
 async function request(path,body){
@@ -30,4 +30,12 @@ chrome.runtime.onMessage.addListener((message,sender,respond)=>{
   sendState(!previous || previous.playing!==p.playing || Math.abs(previous.position-p.position)>2);
 });
 chrome.tabs.onRemoved.addListener(tabId=>{for(const [key,item] of sources)if(item.tabId===tabId)sources.delete(key);});
-setInterval(poll,500);poll();
+async function wake(){
+  // Timers alone disappear when an MV3 worker is suspended. Events recreate it.
+  await chrome.alarms.create('island-reconnect',{periodInMinutes:0.5});
+  await poll();
+}
+chrome.runtime.onStartup.addListener(wake);
+chrome.runtime.onInstalled.addListener(wake);
+chrome.alarms.onAlarm.addListener(alarm=>{if(alarm.name==='island-reconnect')poll();});
+setInterval(poll,500);wake();

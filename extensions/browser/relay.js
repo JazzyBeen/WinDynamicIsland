@@ -1,3 +1,5 @@
+if (!globalThis.__islandRelayInstalled) {
+globalThis.__islandRelayInstalled = true;
 let alive=true;
 let mainReady=false;
 function send(message){if(!alive)return;try{chrome.runtime.sendMessage(message,()=>{void chrome.runtime.lastError;});}catch(_){alive=false;}}
@@ -13,5 +15,7 @@ window.addEventListener('message',event => {
 });
 setInterval(()=>{window.postMessage({channel:'win-dynamic-island-media',type:'probe'},'*');send({type:'bridge-relay-heartbeat',mainReady,mediaElements:document.querySelectorAll('audio,video').length});},2500);
 chrome.runtime.onMessage.addListener(message => {
+  if(message.type==='bridge-probe')window.postMessage({channel:'win-dynamic-island-media',type:'probe'},'*');
   if(message.type==='media-command')window.postMessage({channel:'win-dynamic-island-media',type:'command',action:message.action,value:message.value},'*');
 });
+}

@@ -19,6 +19,8 @@ namespace WinDynamicIsland
         readonly GlassButton save = new GlassButton { Primary = true };
         FlowLayoutPanel body; string section = "General"; bool rebuilding;
         bool closingForExit;
+        readonly Timer autoSave = new Timer { Interval = 450 };
+        string savedDraft;
         readonly Color background = Color.Black, surface = Color.Black, muted = IslandTheme.Secondary, accent = Color.White;
         [System.Runtime.InteropServices.DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
         protected override void OnHandleCreated(EventArgs e)
@@ -37,13 +39,16 @@ namespace WinDynamicIsland
         {
             this.apply = apply;
             draft = Program.Settings.Clone();
+            savedDraft = JsonCodec.Serialize(draft);
+            autoSave.Tick += delegate { autoSave.Stop(); PersistDraft(); };
+            captureUi.Tick += UpdateCaptureStatus;
             Text = "Win Dynamic Island";
             StartPosition = FormStartPosition.CenterScreen;
             ClientSize = new Size(980, 740);
             MinimumSize = new Size(860, 680);
             BackColor = background;
             ForeColor = Color.White;
-            Font = new Font("Segoe UI Variable Text", 10);
+            Font = AppTypography.Create(10);
             AutoScaleMode = AutoScaleMode.Dpi;
             try
             {
@@ -95,9 +100,9 @@ namespace WinDynamicIsland
                 }
                 return;
             }
-            var mark = new Label { Text = "Dynamic Island", Font = new Font("Segoe UI Variable Display", 12, FontStyle.Bold), ForeColor = accent, Width = 184, Height = 58, Margin = new Padding(0, 0, 0, 24) };
+            var mark = new Label { Text = "Dynamic Island", Font = AppTypography.Create(12, FontStyle.Bold), ForeColor = accent, Width = 184, Height = 58, Margin = new Padding(0, 0, 0, 24) };
             navigation.Controls.Add(mark);
-            foreach (string key in new[] { "General", "Appearance", "Media", "Notifications", "Devices", "VPN", "About" })
+            foreach (string key in new[] { "General", "Appearance", "Focus", "Media", "Notifications", "Devices", "VPN", "About" })
             {
                 string target = key;
                 var button = Button(L.T(key), () => ShowSection(target));
@@ -109,7 +114,7 @@ namespace WinDynamicIsland
                 button.Tag = key;
                 navigation.Controls.Add(button);
             }
-            navigation.Controls.Add(new Label { Text = "2.1.1  ·  Windows", ForeColor = muted, Width = 180, Height = 32, Margin = new Padding(12, 32, 0, 0) });
+            navigation.Controls.Add(new Label { Text = "2.2.0  ·  Windows", ForeColor = muted, Width = 180, Height = 32, Margin = new Padding(12, 32, 0, 0) });
         }
         void Collect()
         {
@@ -147,7 +152,7 @@ namespace WinDynamicIsland
                 section = key;
                 BuildNavigation();
                 heading.Text = L.T(key);
-                subtitle.Text = "Win Dynamic Island";
+                subtitle.Text = L.T("AutoSaved");
                 save.Text = L.T("Save");
                 body = new IslandScrollPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = false, Padding = new Padding(0, 12, 8, 12), Font = Font, Visible = false, Size = new Size(Math.Max(1, pageHost.ClientSize.Width), Math.Max(1, pageHost.ClientSize.Height - 80)) };
                 if (key == "General")
@@ -181,6 +186,8 @@ namespace WinDynamicIsland
                     Help("BrowserHelp");
                     body.Controls.Add(Button(L.T("PrepareBrowser"), () => BrowserExtensionSetup.Prepare(true)));
                 }
+                else if (key == "Focus")
+                    FocusSettings();
                 else if (key == "Notifications")
                 {
                     Choice("NotificationRoute", new[] { L.T("SelectedApps"), L.T("AllApps") }, draft.NotificationMode == "All" ? 1 : 0, i => draft.NotificationMode = i == 1 ? "All" : "Selected", false);
@@ -217,7 +224,7 @@ namespace WinDynamicIsland
                     {
                         Help("SotaHelp");
                         SotaProfileStatus();
-                        body.Controls.Add(Button(L.T("SotaSetup"), () => { string exe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SotaProfileSetup.exe"); Process.Start(new ProcessStartInfo(exe, "--language " + draft.Language) { UseShellExecute = true, Verb = "runas" }); }));
+                        EmbeddedVpnSetup();
                     }
                     else if (draft.VpnProvider == "Command" || draft.VpnProvider == "Adapter")
                     {
@@ -260,6 +267,7 @@ namespace WinDynamicIsland
                 SelectNavigation(animate);
                 if (previousBody != null)
                     previousBody.Dispose();
+                if (Visible && !exporting) ScheduleSave();
             }
             catch
             {
@@ -302,6 +310,7 @@ namespace WinDynamicIsland
             var box = new ToggleSwitch { Text = L.T(key), Checked = value, Width = 620, Height = 60, Padding = new Padding(14, 0, 12, 0), Margin = new Padding(0, 4, 0, 4), BackColor = surface, FlatStyle = FlatStyle.Standard };
             body.Controls.Add(box);
             collect.Add(() => set(box.Checked));
+            box.CheckedChanged += delegate { ScheduleSave(); };
         }
         Panel Row(string key)
         {
@@ -315,6 +324,7 @@ namespace WinDynamicIsland
             var input = new SnapSlider(L.T(key), value, min, max) { Font = Font, Margin = new Padding(0, 5, 0, 5) };
             body.Controls.Add(input);
             collect.Add(() => set(input.Value));
+            input.ValueChanged += delegate { ScheduleSave(); };
         }
         void Choice(string key, string[] values, int index, Action<int> set, bool language)
         {
@@ -326,13 +336,15 @@ namespace WinDynamicIsland
             {
                 row.Controls[0].Width = Math.Max(80, input.Left - 24);
             };
-            collect.Add(() => set(input.SelectedIndex));
-            if (language || key == "Provider" || key == "NotificationRoute")
+            if (key != "FocusPreset") collect.Add(() => set(input.SelectedIndex));
+            input.SelectionChanged += delegate { ScheduleSave(); };
+            if (language || key == "Provider" || key == "NotificationRoute" || key == "FocusPreset")
                 input.SelectionChanged += delegate
                 {
                     if (rebuilding)
                         return;
                     Collect();
+                    if (key == "FocusPreset") { set(input.SelectedIndex); collect.Clear(); }
                     if (language)
                         L.Language = draft.Language;
                     ShowSection(section);
@@ -347,6 +359,25 @@ namespace WinDynamicIsland
             var input = new TextBox { Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, Text = value ?? "", Location = new Point(14, 41), Width = 584, BackColor = background, ForeColor = Color.White, BorderStyle = BorderStyle.FixedSingle };
             row.Controls.Add(input);
             collect.Add(() => set(input.Text));
+            input.TextChanged += delegate { ScheduleSave(); };
+        }
+        void ScheduleSave()
+        {
+            if (rebuilding || exporting || apply == null) return;
+            autoSave.Stop(); autoSave.Start();
+        }
+        internal bool PersistDraft()
+        {
+            if (exporting || apply == null) return true;
+            autoSave.Stop();
+            try
+            {
+                Collect(); draft.Validate();
+                string value = JsonCodec.Serialize(draft);
+                if (value != savedDraft) { apply(draft.Clone()); savedDraft = value; }
+                subtitle.Text = L.T("Saved"); return true;
+            }
+            catch (Exception ex) { subtitle.Text = L.T("SaveFailed"); Program.Log("settings-save-error.txt", ex.GetType().Name); autoSave.Start(); return false; }
         }
         void Save(object sender, EventArgs args)
         {
@@ -369,9 +400,11 @@ namespace WinDynamicIsland
         }
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
+            if (e.CloseReason != CloseReason.UserClosing) PersistDraft();
             if (!closingForExit && e.CloseReason == CloseReason.UserClosing)
             {
                 e.Cancel = true;
+                if (!PersistDraft()) return;
                 Hide();
                 L.Language = Program.Settings.Language;
                 return;
@@ -380,6 +413,7 @@ namespace WinDynamicIsland
         }
         internal void CloseForExit()
         {
+            PersistDraft();
             closingForExit = true;
             Close();
         }
@@ -387,6 +421,7 @@ namespace WinDynamicIsland
         {
             collect.Clear();
             draft = Program.Settings.Clone();
+            savedDraft = JsonCodec.Serialize(draft);
             L.Language = draft.Language;
             ShowSection(section);
         }
@@ -397,7 +432,7 @@ namespace WinDynamicIsland
             Show();
             CompleteReveal();
             Application.DoEvents();
-            foreach (string page in new[] { "General", "Appearance", "Notifications", "Devices", "VPN" })
+            foreach (string page in new[] { "General", "Appearance", "Focus", "Media", "Notifications", "Devices", "VPN" })
             {
                 ShowSection(page);
                 Application.DoEvents();

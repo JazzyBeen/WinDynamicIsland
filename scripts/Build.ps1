@@ -14,19 +14,24 @@ $refs=@('/reference:System.Windows.Forms.dll','/reference:System.Drawing.dll','/
 foreach($name in @('WindowsBase','PresentationCore')){$refs+='/reference:'+(Join-Path $framework ('WPF\'+$name+'.dll'))}
 foreach($name in @('System.Runtime','System.Runtime.InteropServices.WindowsRuntime')){$refs+='/reference:'+(Join-Path $framework ($name+'.dll'))}
 foreach($name in @('Windows.Foundation','Windows.Media','Windows.Devices','Windows.Storage','Windows.Networking','Windows.System')){$refs+='/reference:'+(Join-Path $metadata ($name+'.winmd'))}
-$resources=@(('/resource:'+(Join-Path $root 'assets\rewind-fill.svg')+',RewindSvg'),('/resource:'+(Join-Path $root 'assets\fast-forward-fill.svg')+',ForwardSvg'),('/resource:'+(Join-Path $root 'assets\bootstrap-icons-LICENSE')+',MediaIconsLicense'))
+$resources=@(('/resource:'+(Join-Path $root 'assets\fonts\Inter-Regular.ttf')+',InterRegular'),('/resource:'+(Join-Path $root 'assets\fonts\Inter-Bold.ttf')+',InterBold'),('/resource:'+(Join-Path $root 'assets\rewind-fill.svg')+',RewindSvg'),('/resource:'+(Join-Path $root 'assets\fast-forward-fill.svg')+',ForwardSvg'),('/resource:'+(Join-Path $root 'assets\bootstrap-icons-LICENSE')+',MediaIconsLicense'))
 $sources=Get-ChildItem (Join-Path $root 'src\WinDynamicIsland.App') -Recurse -Filter '*.cs' | Where-Object {$_.FullName -notmatch '\\(obj|bin)\\'} | ForEach-Object FullName
 & $csc /nologo /target:winexe /platform:x64 /optimize+ ('/win32icon:'+(Join-Path $root 'assets\WinDynamicIsland.ico')) ('/out:'+(Join-Path $output 'WinDynamicIsland.exe')) @refs @resources @sources
 if($LASTEXITCODE){throw 'App build failed'}
 & $csc /nologo /target:winexe /platform:x64 /reference:System.Web.Extensions.dll /reference:System.Core.dll ('/reference:'+$core) ('/out:'+(Join-Path $output 'IslandGuard.exe')) (Join-Path $root 'src\WinDynamicIsland.Guard\Program.cs') (Join-Path $root 'src\WinDynamicIsland.App\Integrations\Devices\BatteryBannerPolicy.cs') (Join-Path $root 'src\WinDynamicIsland.App\Integrations\Notifications\NotificationRoutingPolicy.cs')
 if($LASTEXITCODE){throw 'Guard build failed'}
-& $csc /nologo /target:winexe /platform:x64 /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Security.dll /reference:System.Web.Extensions.dll ('/reference:'+$core) ('/win32manifest:'+(Join-Path $root 'src\WinDynamicIsland.SotaSetup\capture.manifest')) ('/out:'+(Join-Path $output 'SotaProfileSetup.exe')) (Join-Path $root 'src\WinDynamicIsland.SotaSetup\Program.cs') (Join-Path $root 'src\WinDynamicIsland.App\Integrations\Vpn\Sota\ApiProfile.cs')
+& $csc /nologo /target:winexe /platform:x64 /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Security.dll /reference:System.Web.Extensions.dll ('/reference:'+$core) ('/win32manifest:'+(Join-Path $root 'src\WinDynamicIsland.SotaSetup\capture.manifest')) ('/out:'+(Join-Path $output 'SotaProfileSetup.exe')) (Join-Path $root 'src\WinDynamicIsland.SotaSetup\Program.cs') (Join-Path $root 'src\WinDynamicIsland.App\Integrations\Vpn\Sota\CaptureService.cs') (Join-Path $root 'src\WinDynamicIsland.App\Integrations\Vpn\Sota\ApiProfile.cs')
 if($LASTEXITCODE){throw 'Sota setup build failed'}
 Copy-Item (Join-Path $root 'assets\codex-icon.png') $output -Force
+$licenses=Join-Path $output 'licenses'
+New-Item -ItemType Directory -Path $licenses -Force | Out-Null
+Copy-Item (Join-Path $root 'assets\fonts\LICENSE.txt') (Join-Path $licenses 'Inter-OFL.txt') -Force
+Copy-Item (Join-Path $root 'assets\bootstrap-icons-LICENSE') (Join-Path $licenses 'Bootstrap-MIT.txt') -Force
+Copy-Item (Join-Path $root 'assets\music\LICENSE-CC0.txt') (Join-Path $licenses 'Music-CC0.txt') -Force
 New-Item -ItemType Directory -Path (Join-Path $output 'browser-extension') -Force | Out-Null
 Get-ChildItem (Join-Path $root 'extensions\browser') -File | Where-Object {$_.Name -ne 'connection.js'} | Copy-Item -Destination (Join-Path $output 'browser-extension') -Force
 if($Test -or $TestCore -or $Suites){
-  $selectedSuites=if($Suites){$Suites}elseif($Test){@('SettingsTests','SettingsUiTests','SettingsMotionTests','TelegramNotificationTests','MediaIntegrationTests','BrowserIntegrationTests','CaptureTests','ExperienceTests')}else{@('SettingsTests','SettingsMotionTests','BrowserIntegrationTests','ExperienceTests')}
+  $selectedSuites=if($Suites){$Suites}elseif($Test){@('FocusTests','SettingsPersistenceTests','SettingsTests','SettingsUiTests','SettingsMotionTests','TelegramNotificationTests','MediaIntegrationTests','BrowserIntegrationTests','CaptureTests','ExperienceTests')}else{@('FocusTests','SettingsPersistenceTests','SettingsTests','SettingsMotionTests','BrowserIntegrationTests','ExperienceTests')}
   foreach($suite in $selectedSuites){
     $suiteExecutable=Join-Path $output ($suite+'.exe')
     $extraSources=@();if($suite -eq 'CaptureTests'){$extraSources+=(Join-Path $root 'src\WinDynamicIsland.SotaSetup\Program.cs')}

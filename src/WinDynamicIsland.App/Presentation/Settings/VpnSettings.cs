@@ -9,6 +9,31 @@ namespace WinDynamicIsland
 {
     internal sealed partial class SettingsForm
     {
+        readonly System.Windows.Forms.Timer captureUi = new System.Windows.Forms.Timer { Interval = 700 };
+        Label captureStatusLabel;
+        void UpdateCaptureStatus(object sender, EventArgs e)
+        {
+            if (captureStatusLabel == null || captureStatusLabel.IsDisposed) return;
+            try { if (System.IO.File.Exists(CaptureWorker.StatusPath)) captureStatusLabel.Text = System.IO.File.ReadAllText(CaptureWorker.StatusPath); } catch (System.IO.IOException) { }
+        }
+        void EmbeddedVpnSetup()
+        {
+            Help("CaptureHint");
+            var label = new Label { Text = "", ForeColor = IslandTheme.Secondary, Width = 620, Height = 90, AutoEllipsis = true };
+            captureStatusLabel = label;
+            body.Controls.Add(label);
+            body.Controls.Add(Button(L.T("CaptureInline"), () =>
+            {
+                if (!PersistDraft()) return;
+                System.IO.File.Delete(CaptureWorker.CancelPath);
+                System.IO.File.WriteAllText(CaptureWorker.StatusPath, L.T("CheckingProfile"));
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(Application.ExecutablePath, "--capture-profile " + draft.Language) { UseShellExecute = true, Verb = "runas", WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden });
+                captureUi.Start();
+            }));
+            body.Controls.Add(Button(L.T("CaptureCancel"), () => System.IO.File.WriteAllText(CaptureWorker.CancelPath, "cancel")));
+            captureUi.Stop();
+            captureUi.Start();
+        }
         void SotaProfileStatus()
         {
             Help("CheckingProfile");

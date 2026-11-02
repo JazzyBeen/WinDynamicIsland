@@ -52,11 +52,12 @@ namespace WinDynamicIsland
         {
             get
             {
-                return mediaAvailable && mediaData != null && (!Program.Settings.MediaBackgroundOnly || !mediaData.Foreground) && (mediaData.Playing || pinnedMediaId == mediaData.Id);
+                return mediaAvailable && mediaData != null && (!Program.Settings.MediaBackgroundOnly || !mediaData.Foreground) && (mediaData.Playing || IsFocus || pinnedMediaId == mediaData.Id);
             }
         }
         void AcceptMedia(MediaSnapshot snapshot)
         {
+            string previousMediaId = mediaData == null ? null : mediaData.Id;
             bool wasForeground = mediaData != null && mediaData.Foreground;
             if (mediaMode && snapshot != null && snapshot.Playing && !snapshot.Foreground)
                 pinnedMediaId = snapshot.Id;
@@ -72,6 +73,7 @@ namespace WinDynamicIsland
             dirty = true;
             if (mediaMode)
             {
+                if (snapshot != null && previousMediaId != snapshot.Id && IsFocus) MorphMedia(true);
                 if (!MediaEligible)
                     BeginMediaExit();
             }
@@ -241,7 +243,7 @@ namespace WinDynamicIsland
             var current = MediaMotionAt(now);
             var trail = MediaMotionAt(now.AddMilliseconds(-MotionExposureMs));
             long tick = now.Ticks / TimeSpan.TicksPerMillisecond / (amount < 0.1 ? 50 : 33);
-            bool movingBars = mediaData != null && mediaData.Playing && (amount < 0.1 || amount > 0.85 && mediaData.CanSeek);
+            bool movingBars = IsFocus || mediaData != null && mediaData.Playing && (amount < 0.1 || amount > 0.85 && mediaData.CanSeek);
             if (!dirty && current == previousFrame && trail == previousTrail && (!movingBars || tick == mediaPaintTick))
                 return;
             previousFrame = current;
@@ -288,10 +290,19 @@ namespace WinDynamicIsland
                     g.FillPath(Brushes.Black, path);
                 if (mediaData == null)
                     return face;
+                if (IsFocus) DrawFocusGlow(g, width, height, amount);
                 int iconSize = (int)(26 + 26 * amount), iconY = (int)((height - iconSize) / 2 * (1 - amount) + 18 * amount);
                 var iconRect = new Rectangle(18, iconY, iconSize, iconSize);
                 var image = amount > 0.6 ? (mediaData.Artwork ?? mediaData.Icon) : mediaData.Icon;
-                if (image != null)
+                if (IsFocus)
+                {
+                    using (var pen = new Pen(Color.FromArgb(210, 219, 255), 2))
+                    {
+                        g.DrawEllipse(pen, iconRect.X + 4, iconRect.Y + 4, iconSize - 8, iconSize - 8);
+                        g.DrawLine(pen, iconRect.X + iconSize / 2, iconRect.Y + 7, iconRect.X + iconSize / 2, iconRect.Y + iconSize / 2);
+                    }
+                }
+                else if (image != null)
                 {
                     using (var path = RoundRect(iconRect, 12))
                     {
@@ -306,7 +317,12 @@ namespace WinDynamicIsland
                     using (var font = new Font("Segoe UI Symbol", iconSize * 0.72f, FontStyle.Bold))
                         g.DrawString("♫", font, Brushes.White, iconRect.X - 3, iconRect.Y - 5);
                 }
-                if (amount < 0.4)
+                if (IsFocus && amount < 0.4)
+                {
+                    using (var font = new Font("Segoe UI", 10, FontStyle.Bold))
+                        TextLine(g, Math.Max(0, (int)Math.Ceiling((mediaData.End - mediaPresentation.PositionAt(DateTime.UtcNow)) / 60)) + (L.Language == "en" ? " min" : " мин"), font, Brushes.White, new RectangleF(51, (height - 20) / 2, width - 57, 22));
+                }
+                else if (amount < 0.4)
                 {
                     using (var pen = new Pen(Color.FromArgb((int)(255 * (1 - Ease(amount / 0.4))), 111, 235, 166), 3))
                     {

@@ -53,12 +53,14 @@ namespace WinDynamicIsland
             StartupRegistration.SetEnabled(Program.Settings.StartWithWindows);
             ConfigureModules();
             ConfigureTray();
+            if (Program.Settings.BrowserEnabled)
+                ThreadPool.QueueUserWorkItem(delegate { try { BrowserExtensionSetup.Prepare(false); } catch (Exception ex) { Program.Log("browser-setup-error.txt", ex.GetType().Name); } });
             tray.Visible = true;
             string guard = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "IslandGuard.exe");
             if (File.Exists(guard))
                 using (var owner = Process.GetCurrentProcess())
                     Process.Start(new ProcessStartInfo(guard, owner.Id + " " + owner.StartTime.ToUniversalTime().Ticks) { UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden });
-            Program.Log("host.txt", "Running; version=2.1.1; PID=" + Process.GetCurrentProcess().Id);
+            Program.Log("host.txt", "Running; version=2.2.0; PID=" + Process.GetCurrentProcess().Id);
             if (Program.Settings.ShowStartupIsland)
                 Program.Presenter.Status("Win Dynamic Island", L.T("Ready"), true, false);
             if (action == "--settings")
@@ -71,7 +73,9 @@ namespace WinDynamicIsland
             var next = new Dictionary<string, Func<IDisposable>>();
             if (Program.Settings.BrowserEnabled && Program.Settings.MediaEnabled)
                 next["browser"] = () => new BrowserLoopback();
-            if (Program.Settings.MediaEnabled)
+            if (Program.Settings.FocusEnabled)
+                next["focus"] = () => new FocusService();
+            if (Program.Settings.MediaEnabled || Program.Settings.FocusEnabled)
                 next["media"] = () => new MediaSessionMonitor();
             if (Program.Settings.BatteryEnabled || Program.Settings.HeadphonesEnabled || Program.Settings.ChargingEnabled)
                 next["devices"] = () => new DeviceMonitor();
@@ -85,6 +89,7 @@ namespace WinDynamicIsland
                 next["vpn-status"] = () => new VpnStatusMonitor();
             modules.Update(next);
             commands.SetHotkey(Program.Settings.VpnEnabled && Program.Settings.VpnHotkeyEnabled);
+            commands.SetFocusHotkey(Program.Settings.FocusEnabled);
         }
         void ConfigureTray()
         {
@@ -98,6 +103,7 @@ namespace WinDynamicIsland
             {
                 ToggleVpn();
             });
+            menu.Items.Add(L.T("FocusToggle"), null, delegate { FocusService.Toggle(); });
             menu.Items.Add(L.T("Preview"), null, delegate
             {
                 Program.Presenter.Status("Win Dynamic Island", L.T("Ready"), true, false);
@@ -120,6 +126,8 @@ namespace WinDynamicIsland
                 ToggleVpn();
             else if (command == 3)
                 Quit();
+            else if (command == 4)
+                FocusService.Toggle();
         }
         internal void OpenSettings()
         {
@@ -137,8 +145,6 @@ namespace WinDynamicIsland
         }
         void Apply(AppSettings next)
         {
-            if (busy)
-                throw new InvalidOperationException(L.T("Connecting"));
             Program.Store.Save(next);
             StartupRegistration.SetEnabled(next.StartWithWindows);
             Program.Settings = next;
@@ -184,6 +190,7 @@ namespace WinDynamicIsland
             if (quitting)
                 return;
             quitting = true;
+            try { File.WriteAllText(CaptureWorker.CancelPath, "cancel"); } catch { }
             if (settings != null)
                 settings.CloseForExit();
             tray.Visible = false;
@@ -210,7 +217,7 @@ namespace WinDynamicIsland
     }
     internal sealed class HostWindow : NativeWindow, IDisposable
     {
-        internal const uint CommandMessage = 0x8002; readonly Action<int> dispatch; bool registered;
+        internal const uint CommandMessage = 0x8002; readonly Action<int> dispatch; bool registered, focusRegistered;
         [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)] static extern bool RegisterHotKey(IntPtr h, int id, uint modifiers, uint key);
         [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool UnregisterHotKey(IntPtr h, int id);
         internal HostWindow(Action<int> dispatch)
@@ -237,13 +244,22 @@ namespace WinDynamicIsland
                 dispatch(message.WParam.ToInt32());
             else if (message.Msg == 0x312 && message.WParam.ToInt32() == 7821)
                 dispatch(2);
+            else if (message.Msg == 0x312 && message.WParam.ToInt32() == 7822)
+                dispatch(4);
             base.WndProc(ref message);
         }
         public void Dispose()
         {
+            if (focusRegistered) UnregisterHotKey(Handle, 7822);
             if (registered)
                 UnregisterHotKey(Handle, 7821);
             DestroyHandle();
+        }
+        internal void SetFocusHotkey(bool enabled)
+        {
+            if (focusRegistered) UnregisterHotKey(Handle, 7822);
+            focusRegistered = enabled && RegisterHotKey(Handle, 7822, 0x4001, 0x42);
+            if (enabled) Program.Log("focus-hotkey.txt", focusRegistered ? "Alt+B registered" : "Alt+B unavailable; use the tray or settings");
         }
     }
 }

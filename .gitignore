@@ -12,3 +12,13 @@ extensions/browser/connection.js
 extensions/browser/connection.local.js
 local/
 *.zip
+*.mp3
+*.wav
+*.pdb
+**/settings.json
+**/settings.json.*
+**/capture-status.txt
+**/capture-cancel.flag
+**/browser-loopback-token.txt
+**/endpoint.json
+**/shared_preferences.json

@@ -8,6 +8,7 @@ namespace WinDynamicIsland
 {
     internal sealed class AppSelectionList : Control
     {
+        internal event EventHandler SelectionChanged;
         readonly NotificationChoice[] choices; readonly HashSet<string> selected; readonly bool all;
         NotificationChoice[] visible; int offset, hover = -1; const int RowHeight = 34;
         internal AppSelectionList(NotificationChoice[] choices, HashSet<string> selected, bool all)
@@ -41,6 +42,7 @@ namespace WinDynamicIsland
                     selected.Remove(id);
                 else
                     selected.Add(id);
+            if (SelectionChanged != null) SelectionChanged(this, EventArgs.Empty);
             Invalidate();
         }
         protected override void OnMouseDown(MouseEventArgs e)

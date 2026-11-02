@@ -38,6 +38,7 @@ namespace WinDynamicIsland
             card.Controls.Add(search);
             card.Controls.Add(list);
             body.Controls.Add(card);
+            list.SelectionChanged += delegate { ScheduleSave(); };
             collect.Add(delegate
             {
                 draft.NotificationApps = selected.ToArray();

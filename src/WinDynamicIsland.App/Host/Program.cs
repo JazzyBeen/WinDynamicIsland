@@ -8,7 +8,7 @@ using System.Windows.Forms;
 using WinDynamicIsland.Core;
 
 [assembly: System.Reflection.AssemblyTitle("Win Dynamic Island")]
-[assembly: System.Reflection.AssemblyVersion("2.1.1.0")]
+[assembly: System.Reflection.AssemblyVersion("2.2.0.0")]
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("WinDynamicIsland.Tests")]
 namespace WinDynamicIsland
 {
@@ -49,6 +49,7 @@ namespace WinDynamicIsland
         {
             Directory.CreateDirectory(DataPath);
             Settings = Store.Load();
+            if (args.Length > 0 && args[0].StartsWith("--render-", StringComparison.Ordinal)) Settings = new AppSettings();
             L.Language = Settings.Language;
             try
             {
@@ -58,9 +59,12 @@ namespace WinDynamicIsland
             SetCurrentProcessExplicitAppUserModelID("WinDynamicIsland.Desktop");
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            if (args.Length == 2 && args[0] == "--render-focus") { Island.ExportFocusPreview(args[1]); return; }
+            if (args.Length > 0 && args[0] == "--capture-profile") { CaptureWorker.Run(args.Length > 1 ? args[1] : "ru"); return; }
+            if (args.Length == 3 && args[0] == "--capture-watch") { try { Process.GetProcessById(int.Parse(args[1])).WaitForExit(); } catch { } try { Recovery.Restore(args[2]); } catch { } return; }
             if (args.Length > 0 && args[0] == "--check")
             {
-                Log("health.txt", "Version=2.1.1; Startup=" + StartupRegistration.IsEnabled + "; SotaProfile=" + File.Exists(ApiProfile.PathName));
+                Log("health.txt", "Version=2.2.0; Startup=" + StartupRegistration.IsEnabled + "; SotaProfile=" + File.Exists(ApiProfile.PathName));
                 return;
             }
             if (args.Length > 0 && args[0] == "--check-api")

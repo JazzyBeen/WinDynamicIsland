@@ -6,6 +6,12 @@ namespace WinDynamicIsland.Core
 {
     public sealed class AppSettings
     {
+        public bool FocusEnabled { get; set; }
+        public int FocusMinutes { get; set; }
+        public int BreakMinutes { get; set; }
+        public int FocusVolume { get; set; }
+        public string FocusPlaylist { get; set; }
+        public bool FocusBreakMusic { get; set; }
         public bool InterfaceAnimations
         {
             get; set;
@@ -192,6 +198,11 @@ namespace WinDynamicIsland.Core
         }
         public AppSettings()
         {
+            FocusEnabled = true;
+            FocusMinutes = 50;
+            BreakMinutes = 10;
+            FocusVolume = 35;
+            FocusPlaylist = "Ambient";
             SchemaVersion = 1;
             Language = "ru";
             StartWithWindows = true;
@@ -220,6 +231,10 @@ namespace WinDynamicIsland.Core
         }
         public void Validate()
         {
+            FocusMinutes = Clamp(FocusMinutes, 1, 120);
+            BreakMinutes = Clamp(BreakMinutes, 1, 60);
+            FocusVolume = Clamp(FocusVolume, 0, 100);
+            FocusPlaylist = FocusPlaylist == "Lofi" ? "Lofi" : "Ambient";
             SchemaVersion = 1;
             Language = Language == "en" ? "en" : "ru";
             TopGap = Clamp(TopGap, 2, 48);
@@ -266,7 +281,17 @@ namespace WinDynamicIsland.Core
                 value.Validate();
                 return value;
             }
-            catch { File.Copy(path, path + ".invalid-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss"), true); return new AppSettings(); }
+            catch
+            {
+                try { File.Copy(path, path + ".invalid-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss"), true); } catch { }
+                try
+                {
+                    var backup = new JavaScriptSerializer().Deserialize<AppSettings>(File.ReadAllText(path + ".backup"));
+                    if (backup != null) { backup.Validate(); return backup; }
+                }
+                catch { }
+                return new AppSettings();
+            }
         }
         public void Save(AppSettings settings)
         {
