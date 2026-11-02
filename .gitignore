@@ -17,6 +17,7 @@ local/
 *.pdb
 **/settings.json
 **/settings.json.*
+**/focus-shuffle.json
 **/capture-status.txt
 **/capture-cancel.flag
 **/browser-loopback-token.txt

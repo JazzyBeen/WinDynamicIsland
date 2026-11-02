@@ -21,7 +21,7 @@
 
 | | Что умеет остров |
 |---|---|
-| **Фокус** | Alt+B запускает Pomodoro: 50/10, 25/5, 90/20 или свои интервалы. Пауза, музыка, автоматическая смена работы и отдыха. В компактном режиме — медленный сине-фиолетовый градиент. |
+| **Фокус** | Alt+B запускает Pomodoro: 50/10, 25/5, 90/20 или свои интервалы. Пауза, музыка, автоматическая смена работы и отдыха. В компактном режиме — медленный сине-розово-фиолетовый градиент. |
 | **Медиа** | Управление системными медиасессиями: пауза, перемотка и таймлайн. Разворачивается по нажатию, сворачивается при нажатии вне острова. |
 | **Уведомления** | Выбранные приложения или все отправители Windows. Аватарки, очередь сообщений и замена стандартных баннеров. |
 | **Устройства** | Bluetooth-наушники, зарядка и низкий заряд батареи. |
@@ -59,7 +59,7 @@
 powershell -ExecutionPolicy Bypass -File .\scripts\Download-Music.ps1
 ```
 
-Скрипт скачивает исходный архив Open Lo-Fi (~529 MiB), проверяет SHA-256 выбранных файлов и устанавливает только 24 трека (~79 MiB). После этого музыка работает офлайн. Можно добавить свои MP3 в `%LOCALAPPDATA%\WinDynamicIsland\Music\Ambient` и `Lofi`. Во время перерыва музыка по умолчанию приостанавливается. Изменения длительности применяются к следующей запущенной сессии; громкость — к текущей.
+Скрипт скачивает исходный архив Open Lo-Fi (~529 MiB), проверяет SHA-256 выбранных файлов и устанавливает только 24 трека (~79 MiB). После этого музыка работает офлайн. Треки перемешиваются без повторов до конца набора; очередь сохраняется между сессиями и перезапусками приложения. Можно добавить свои MP3 в `%LOCALAPPDATA%\WinDynamicIsland\Music\Ambient` и `Lofi`. Во время перерыва музыка по умолчанию приостанавливается. Изменения длительности применяются к следующей запущенной сессии; громкость — к текущей.
 
 ### Браузеры и Spotify
 
@@ -120,7 +120,7 @@ tests/                        Проверки состояния, интегр�
 
 **A calmer Windows desktop.** Media controls, notifications, device status and a focus timer in one animated island.
 
-- **Alt+B:** start or stop Pomodoro. Choose 50/10, 25/5, 90/20 or custom intervals. Local ambient/lo-fi music, pause controls and a slowly drifting blue-purple compact island.
+- **Alt+B:** start or stop Pomodoro. Choose 50/10, 25/5, 90/20 or custom intervals. Local ambient/lo-fi music, pause controls and a slowly drifting blue/pink/violet compact island.
 - **Media:** Windows media sessions work without an extension. An optional local browser bridge supports additional websites.
 - **Notifications:** choose senders or route all Windows notifications, with avatars and duplicate banner suppression.
 - **Devices:** battery, charging, Bluetooth headphones, volume and microphone indicators.

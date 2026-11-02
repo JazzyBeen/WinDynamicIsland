@@ -24,7 +24,8 @@ namespace WinDynamicIsland
                 var old = Program.Settings; Program.Settings = new AppSettings { FocusVolume = 0 };
                 try
                 {
-                    using (var service = new FocusService())
+                    string isolated = Path.Combine(Path.GetTempPath(), "island-empty-music-" + Guid.NewGuid().ToString("N"));
+                    using (var service = new FocusService(isolated, Path.Combine(isolated, "shuffle.json")))
                     {
                         FocusService.Toggle();
                         using (var snapshot = FocusService.Read()) { Check(snapshot != null && snapshot.CanToggle && snapshot.CanSeek, "focus exposes the same media control contract"); snapshot.Command("toggle", 0); }

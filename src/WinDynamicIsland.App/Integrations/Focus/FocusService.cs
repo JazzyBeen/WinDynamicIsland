@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -21,13 +22,16 @@ namespace WinDynamicIsland
         readonly MciMusicPlayer player = new MciMusicPlayer();
         string playlist, track = "";
         string sessionId = "";
-        int nextTrack;
+        readonly FocusShuffleStore shuffle;
+        readonly string musicDirectory;
         bool audioFailed;
         double lastTime;
         DateTime retryAudioAt;
         internal static string MusicPath { get { return Path.Combine(Program.DataPath, "Music"); } }
-        internal FocusService()
+        internal FocusService(string musicDirectory = null, string shufflePath = null)
         {
+            this.musicDirectory = musicDirectory ?? MusicPath;
+            shuffle = new FocusShuffleStore(shufflePath ?? Path.Combine(Program.DataPath, "focus-shuffle.json"));
             lock (Gate) instance = this;
             worker = new Thread(delegate()
             {
@@ -52,7 +56,8 @@ namespace WinDynamicIsland
                     self.clock.Start(Program.Settings.FocusMinutes, Program.Settings.BreakMinutes);
                     self.sessionId = Guid.NewGuid().ToString("N");
                     self.lastTime = self.elapsed.Elapsed.TotalSeconds;
-                    self.nextTrack = 0; self.playlist = null; self.track = ""; self.audioFailed = false;
+                    self.playlist = null; self.track = ""; self.audioFailed = false;
+                    self.retryAudioAt = DateTime.MinValue;
                     self.resetAudio = true;
                 }
                 self.wake.Set();
@@ -76,21 +81,29 @@ namespace WinDynamicIsland
                     }
                     if (clock.Paused || clock.Resting && !Program.Settings.FocusBreakMusic) { player.Pause(); return; }
                     string selected = Program.Settings.FocusPlaylist;
-                    if (playlist != selected) { player.Close(); playlist = selected; nextTrack = 0; track = ""; }
+                    if (playlist != selected) { player.Close(); playlist = selected; track = ""; retryAudioAt = DateTime.MinValue; }
                     player.Volume(Program.Settings.FocusVolume);
                     if (player.IsPaused) player.Resume();
                     if (player.IsPlaying) return;
                     if (DateTime.UtcNow < retryAudioAt) return;
-                    string folder = Path.Combine(MusicPath, selected);
-                    string[] files = Directory.Exists(folder) ? Directory.GetFiles(folder, "*.mp3").OrderBy(f => f).ToArray() : new string[0];
+                    string folder = Path.Combine(musicDirectory, selected);
+                    string[] files = Directory.Exists(folder) ? Directory.GetFiles(folder, "*.mp3").Select(Path.GetFileName).ToArray() : new string[0];
                     if (files.Length == 0) { track = L.T("FocusSilent"); return; }
                     // Try each track once: one damaged file must not stop the timer or the playlist.
                     bool played = false;
-                    for (int i = 0; i < files.Length; i++)
+                    var bag = shuffle.For(selected);
+                    var attempted = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    for (int i = 0; i < files.Length * 2 && attempted.Count < files.Length; i++)
                     {
-                        string file = files[nextTrack++ % files.Length];
-                        if (player.Open(file, Program.Settings.FocusVolume)) { track = Path.GetFileNameWithoutExtension(file).Replace('-', ' '); played = true; break; }
+                        string file = bag.Next(files);
+                        if (!attempted.Add(file)) continue;
+                        if (player.Open(Path.Combine(folder, file), Program.Settings.FocusVolume))
+                        {
+                            bag.MarkPlayed(file);
+                            track = Path.GetFileNameWithoutExtension(file).Replace('-', ' '); played = true; break;
+                        }
                     }
+                    shuffle.Save();
                     audioFailed = !played;
                     if (!played) retryAudioAt = DateTime.UtcNow.AddSeconds(10);
                 }

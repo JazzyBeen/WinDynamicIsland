@@ -12,11 +12,19 @@ namespace WinDynamicIsland
             using (var shape = RoundRect(new Rectangle(0, 0, width - 1, height - 1), 64))
             {
                 var state = g.Save(); g.SetClip(shape);
-                // One slow 18-second drift, no strobing or sharp highlights.
-                float offset = (float)(Math.Sin(DateTime.UtcNow.TimeOfDay.TotalSeconds * Math.PI / 9) * width * .25);
-                using (var brush = new LinearGradientBrush(new RectangleF(-width + offset, 0, width * 3, height), Color.FromArgb(25, 80, 220), Color.FromArgb(100, 38, 190), 0f))
+                // A slow 24-second drift keeps blue and pink-violet visible together.
+                float offset = (float)(Math.Sin(DateTime.UtcNow.TimeOfDay.TotalSeconds * Math.PI / 12) * width * .35);
+                using (var brush = new LinearGradientBrush(new RectangleF(-width * .4f + offset, 0, width * 1.8f, height), Color.Blue, Color.Blue, 0f))
+                {
+                    brush.WrapMode = WrapMode.TileFlipX;
+                    brush.InterpolationColors = new ColorBlend
+                    {
+                        Positions = new[] { 0f, .25f, .5f, .75f, 1f },
+                        Colors = new[] { Color.FromArgb(25, 88, 255), Color.FromArgb(83, 61, 241), Color.FromArgb(211, 62, 201), Color.FromArgb(99, 55, 232), Color.FromArgb(25, 88, 255) }
+                    };
                     g.FillRectangle(brush, 0, 0, width, height);
-                using (var shade = new SolidBrush(Color.FromArgb((int)(110 + 95 * amount), Color.Black)))
+                }
+                using (var shade = new SolidBrush(Color.FromArgb((int)(90 + 115 * amount), Color.Black)))
                     g.FillRectangle(shade, 0, 0, width, height);
                 g.Restore(state);
             }
