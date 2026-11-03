@@ -566,6 +566,7 @@ namespace WinDynamicIsland
             if (disposing)
             {
                 timer.Dispose();
+                if (focusField != null) focusField.Dispose();
                 outsideClicks.Dispose();
                 if (logo != null)
                     logo.Dispose();

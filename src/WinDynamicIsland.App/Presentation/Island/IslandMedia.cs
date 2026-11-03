@@ -106,6 +106,7 @@ namespace WinDynamicIsland
             mediaFrom = 0;
             mediaTo = expanded ? 1 : 0;
             mediaPulseAt = mediaAppeared.AddMilliseconds(OpeningMs);
+            if (IsFocus && expanded) BoostFocusTexture(OpeningMs);
             mediaForegroundAtOpen = Program.GetForegroundWindow();
             mediaCollapseAt = mediaAppeared.AddMilliseconds(OpeningMs + (Program.Settings.MediaCollapseSeconds * 1000));
             pinnedMediaId = mediaData.Id;
@@ -191,6 +192,7 @@ namespace WinDynamicIsland
             mediaFromWidth = frame.Width;
             mediaFromHeight = frame.Height;
             mediaFrom = MediaAmount(now);
+            if (IsFocus && expanded && mediaFrom < .999) BoostFocusTexture(ExpandMs);
             mediaTo = expanded ? 1 : 0;
             mediaMorphAt = now;
             mediaEntering = false;
@@ -290,7 +292,7 @@ namespace WinDynamicIsland
                     g.FillPath(Brushes.Black, path);
                 if (mediaData == null)
                     return face;
-                if (IsFocus) DrawFocusGlow(g, width, height, amount);
+                if (IsFocus) DrawFocusGlow(g, width, height);
                 int iconSize = (int)(26 + 26 * amount), iconY = (int)((height - iconSize) / 2 * (1 - amount) + 18 * amount);
                 var iconRect = new Rectangle(18, iconY, iconSize, iconSize);
                 var image = amount > 0.6 ? (mediaData.Artwork ?? mediaData.Icon) : mediaData.Icon;

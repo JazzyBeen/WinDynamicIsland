@@ -21,7 +21,7 @@
 
 | | Что умеет остров |
 |---|---|
-| **Фокус** | Alt+B запускает Pomodoro: 50/10, 25/5, 90/20 или свои интервалы. Пауза, музыка, автоматическая смена работы и отдыха. В компактном режиме — чёрный центр, мягкий переливающийся сине-фиолетовый градиент по всему периметру и дрейфующие точки с независимой пульсацией. |
+| **Фокус** | Alt+B запускает Pomodoro: 50/10, 25/5, 90/20 или свои интервалы. Пауза, музыка, автоматическая смена работы и отдыха. В компактном и раскрытом виде — чёрный центр, мягкий переливающийся сине-фиолетовый градиент по периметру и дрейфующие точки. При раскрытии фон ненадолго ускоряется и плавно замедляется. |
 | **Медиа** | Управление системными медиасессиями: пауза, перемотка и таймлайн. Разворачивается по нажатию, сворачивается при нажатии вне острова. |
 | **Уведомления** | Выбранные приложения или все отправители Windows. Аватарки, очередь сообщений и замена стандартных баннеров. |
 | **Устройства** | Bluetooth-наушники, зарядка и низкий заряд батареи. |
@@ -120,7 +120,7 @@ tests/                        Проверки состояния, интегр�
 
 **A calmer Windows desktop.** Media controls, notifications, device status and a focus timer in one animated island.
 
-- **Alt+B:** start or stop Pomodoro. Choose 50/10, 25/5, 90/20 or custom intervals. Local ambient/lo-fi music, pause controls and a compact island with a black center, a soft flowing blue/violet gradient around the entire perimeter and independently pulsing, drifting halftone dots.
+- **Alt+B:** start or stop Pomodoro. Choose 50/10, 25/5, 90/20 or custom intervals. Local ambient/lo-fi music, pause controls and matching compact and expanded islands with a black center, a soft flowing blue/violet gradient and drifting halftone dots. Opening briefly accelerates the background before smoothly easing back to its idle speed.
 - **Media:** Windows media sessions work without an extension. An optional local browser bridge supports additional websites.
 - **Notifications:** choose senders or route all Windows notifications, with avatars and duplicate banner suppression.
 - **Devices:** battery, charging, Bluetooth headphones, volume and microphone indicators.
