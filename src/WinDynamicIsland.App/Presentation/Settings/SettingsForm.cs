@@ -114,7 +114,7 @@ namespace WinDynamicIsland
                 button.Tag = key;
                 navigation.Controls.Add(button);
             }
-            navigation.Controls.Add(new Label { Text = "2.2.1  ·  Windows", ForeColor = muted, Width = 180, Height = 32, Margin = new Padding(12, 32, 0, 0) });
+            navigation.Controls.Add(new Label { Text = "2.2.2  ·  Windows", ForeColor = muted, Width = 180, Height = 32, Margin = new Padding(12, 32, 0, 0) });
         }
         void Collect()
         {

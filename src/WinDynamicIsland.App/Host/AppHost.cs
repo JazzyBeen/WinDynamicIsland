@@ -60,7 +60,7 @@ namespace WinDynamicIsland
             if (File.Exists(guard))
                 using (var owner = Process.GetCurrentProcess())
                     Process.Start(new ProcessStartInfo(guard, owner.Id + " " + owner.StartTime.ToUniversalTime().Ticks) { UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden });
-            Program.Log("host.txt", "Running; version=2.2.1; PID=" + Process.GetCurrentProcess().Id);
+            Program.Log("host.txt", "Running; version=2.2.2; PID=" + Process.GetCurrentProcess().Id);
             if (Program.Settings.ShowStartupIsland)
                 Program.Presenter.Status("Win Dynamic Island", L.T("Ready"), true, false);
             if (action == "--settings")

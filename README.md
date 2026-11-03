@@ -21,7 +21,7 @@
 
 | | Что умеет остров |
 |---|---|
-| **Фокус** | Alt+B запускает Pomodoro: 50/10, 25/5, 90/20 или свои интервалы. Пауза, музыка, автоматическая смена работы и отдыха. В компактном режиме — медленный сине-розово-фиолетовый градиент. |
+| **Фокус** | Alt+B запускает Pomodoro: 50/10, 25/5, 90/20 или свои интервалы. Пауза, музыка, автоматическая смена работы и отдыха. В компактном режиме — чёрный центр, плавный сине-фиолетовый градиент и плывущие точки по краям. |
 | **Медиа** | Управление системными медиасессиями: пауза, перемотка и таймлайн. Разворачивается по нажатию, сворачивается при нажатии вне острова. |
 | **Уведомления** | Выбранные приложения или все отправители Windows. Аватарки, очередь сообщений и замена стандартных баннеров. |
 | **Устройства** | Bluetooth-наушники, зарядка и низкий заряд батареи. |
@@ -120,7 +120,7 @@ tests/                        Проверки состояния, интегр�
 
 **A calmer Windows desktop.** Media controls, notifications, device status and a focus timer in one animated island.
 
-- **Alt+B:** start or stop Pomodoro. Choose 50/10, 25/5, 90/20 or custom intervals. Local ambient/lo-fi music, pause controls and a slowly drifting blue/pink/violet compact island.
+- **Alt+B:** start or stop Pomodoro. Choose 50/10, 25/5, 90/20 or custom intervals. Local ambient/lo-fi music, pause controls and a compact island with a black center, flowing blue/violet edges and drifting halftone dots.
 - **Media:** Windows media sessions work without an extension. An optional local browser bridge supports additional websites.
 - **Notifications:** choose senders or route all Windows notifications, with avatars and duplicate banner suppression.
 - **Devices:** battery, charging, Bluetooth headphones, volume and microphone indicators.
