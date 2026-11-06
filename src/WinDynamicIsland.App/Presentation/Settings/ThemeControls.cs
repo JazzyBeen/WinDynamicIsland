@@ -535,7 +535,13 @@ namespace WinDynamicIsland
     internal sealed class SnapSlider : Control
     {
         readonly string label; readonly int min, max; readonly int[] magnets;
-        int value; bool dragging; float displayValue, dragAmount;
+        // displayValue is the drawn thumb position; while dragging it follows the
+        // pointer continuously instead of jumping between integer values.
+        int value; bool dragging; float displayValue, displayTarget, dragAmount;
+        bool magnetic = true;
+        // Stops that catch the thumb (min, quarter, half, start value, max).
+        // Continuous ranges such as colour channels turn them off.
+        internal bool Magnetic { get { return magnetic; } set { magnetic = value; Invalidate(); } }
         readonly Timer motionTimer = new FrameTimer(); DateTime motionAt;
         internal int Value
         {
@@ -549,7 +555,11 @@ namespace WinDynamicIsland
                 if (this.value == next)
                     return;
                 this.value = next;
-                if (dragging || !Program.Settings.InterfaceAnimations) displayValue = next;
+                if (!dragging)
+                {
+                    displayTarget = next;
+                    if (!Program.Settings.InterfaceAnimations) displayValue = next;
+                }
                 AnimateThumb();
                 if (ValueChanged != null)
                     ValueChanged(this, EventArgs.Empty);
@@ -562,7 +572,7 @@ namespace WinDynamicIsland
             this.min = min;
             this.max = max;
             this.value = value;
-            displayValue = value;
+            displayValue = displayTarget = value;
             magnets = new[] { min, min + (max - min) / 4, min + (max - min) / 2, value, max };
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.Selectable, true);
             Size = new Size(620, 91);
@@ -576,16 +586,17 @@ namespace WinDynamicIsland
             {
                 float t = (float)(PreciseClock.UtcNow - motionAt).TotalMilliseconds;
                 motionAt = PreciseClock.UtcNow;
-                displayValue += (value - displayValue) * Math.Min(1, t / 55);
+                if (!dragging)
+                    displayValue += (displayTarget - displayValue) * Math.Min(1, t / 55);
                 dragAmount += ((dragging ? 1 : 0) - dragAmount) * Math.Min(1, t / 70);
                 if (!Program.Settings.InterfaceAnimations)
                 {
-                    displayValue = value;
+                    if (!dragging) displayValue = displayTarget;
                     dragAmount = dragging ? 1 : 0;
                 }
-                if (Math.Abs(displayValue - value) < .01f && Math.Abs(dragAmount - (dragging ? 1 : 0)) < .01f)
+                if ((dragging || Math.Abs(displayValue - displayTarget) < .01f) && Math.Abs(dragAmount - (dragging ? 1 : 0)) < .01f)
                 {
-                    displayValue = value;
+                    if (!dragging) displayValue = displayTarget;
                     dragAmount = dragging ? 1 : 0;
                     motionTimer.Stop();
                 }
@@ -608,16 +619,22 @@ namespace WinDynamicIsland
         void At(int x)
         {
             double width = Math.Max(1, Width - 52), position = Math.Max(0, Math.Min(width, x - 26));
-            foreach (int stop in magnets)
+            float pointer = (float)(min + position / width * (max - min));
+            int chosen = Snap(position / width);
+            if (magnetic)
+                foreach (int stop in magnets)
+                    if (Math.Abs(position - (stop - min) * width / Math.Max(1, max - min)) <= 6)
+                    {
+                        pointer = chosen = stop;
+                        break;
+                    }
+            // Move the thumb first so ValueChanged observers see a consistent state.
+            if (dragging)
             {
-                double at = (stop - min) * width / Math.Max(1, max - min);
-                if (Math.Abs(position - at) <= 6)
-                {
-                    Value = stop;
-                    return;
-                }
+                displayValue = pointer;
+                Invalidate();
             }
-            Value = Snap(position / width);
+            Value = chosen;
         }
         protected override void OnMouseDown(MouseEventArgs e)
         {
@@ -626,7 +643,6 @@ namespace WinDynamicIsland
                 Focus();
                 dragging = true;
                 Capture = true;
-                displayValue = value;
                 At(e.X);
                 AnimateThumb();
             }
@@ -641,15 +657,23 @@ namespace WinDynamicIsland
         protected override void OnMouseUp(MouseEventArgs e)
         {
             if (dragging && e.Button == MouseButtons.Left) At(e.X);
-            dragging = false;
+            EndDrag();
             Capture = false;
-            AnimateThumb();
             base.OnMouseUp(e);
         }
         protected override void OnMouseCaptureChanged(EventArgs e)
         {
-            if (!Capture && dragging) { dragging = false; AnimateThumb(); }
+            if (!Capture && dragging) EndDrag();
             base.OnMouseCaptureChanged(e);
+        }
+        // Settle the thumb from where the pointer left it onto the chosen value.
+        void EndDrag()
+        {
+            if (!dragging) return;
+            dragging = false;
+            displayTarget = value;
+            if (!Program.Settings.InterfaceAnimations) displayValue = value;
+            AnimateThumb();
         }
         protected override bool IsInputKey(Keys key)
         {
@@ -693,6 +717,7 @@ namespace WinDynamicIsland
                 if (x > 26)
                     g.DrawLine(pen, 26, y, x, y);
             }
+            if (magnetic)
             using (var brush = new SolidBrush(Color.FromArgb(110, 110, 120)))
                 foreach (int stop in magnets)
                 {
@@ -714,6 +739,7 @@ namespace WinDynamicIsland
             AppDesign.Fill(g, new RectangleF(26, 55, Math.Max(0, x - 32), 16), 8, AppDesign.Primary);
             AppDesign.Fill(g, new RectangleF(x + 6, 55, Math.Max(0, Width - 32 - x), 16), 8, AppDesign.Secondary);
             AppDesign.Fill(g, new RectangleF(x - 2, 47 - 2 * dragAmount, 4, 32 + 4 * dragAmount), 2, AppDesign.Primary);
+            if (magnetic)
             foreach (int stop in magnets)
             {
                 float at = 26 + (Width - 52) * (stop - min) / Math.Max(1, max - min);

@@ -99,8 +99,14 @@ namespace WinDynamicIsland
             commands.SetHotkey(Program.Settings.VpnEnabled && Program.Settings.VpnHotkeyEnabled);
             commands.SetFocusHotkey(Program.Settings.FocusEnabled);
         }
+        string trayLook;
         void ConfigureTray()
         {
+            // Autosave applies settings often; rebuild the menu only when its
+            // language or look actually changed.
+            string look = L.Language + "|" + Program.Settings.InterfaceDesign + "|" + MaterialPalette.Hex(AppDesign.Seed);
+            if (look == trayLook && tray.ContextMenuStrip != null) return;
+            trayLook = look;
             var menu = new ContextMenuStrip();
             IslandMenuRenderer.Style(menu);
             menu.Items.Add(L.T("OpenSettings"), null, delegate
@@ -154,7 +160,9 @@ namespace WinDynamicIsland
         void Apply(AppSettings next)
         {
             Program.Store.Save(next);
-            StartupRegistration.SetEnabled(next.StartWithWindows);
+            // Rewriting an identical Run entry on every autosave is wasted registry work.
+            if (!next.StartWithWindows || !StartupRegistration.IsEnabled)
+                StartupRegistration.SetEnabled(next.StartWithWindows);
             Program.Settings = next;
             AppDesign.Change(next.InterfaceDesign == "Material", true);
             AppDesign.ConfigurePalette();

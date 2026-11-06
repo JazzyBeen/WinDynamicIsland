@@ -28,20 +28,54 @@ namespace WinDynamicIsland
             if (rebuilding || draft.InterfaceDesign == design) return;
             Collect();
             designTransition.Finish(); transition.Finish();
-            Bitmap outgoing = Visible && !exporting && draft.InterfaceAnimations ? CaptureClient() : null;
+            Bitmap outgoing = Visible && !exporting && draft.InterfaceAnimations ? CaptureShownClient() : null;
             string previous = draft.InterfaceDesign;
             draft.InterfaceDesign = design;
             if (!PersistDraft()) { draft.InterfaceDesign = previous; if (outgoing != null) outgoing.Dispose(); return; }
             if (apply == null) { Program.Settings.InterfaceDesign = design; AppDesign.Change(design == "Material", false); }
             ApplyVisualTheme();
-            ShowSection(section);
-            transition.Finish();
+            RebuildQuietly();
             if (outgoing != null)
             {
                 var incoming = CaptureClient();
                 designTransition.Bounds = ClientRectangle;
                 designTransition.Cover(outgoing); designTransition.Begin(incoming, 0);
             }
+        }
+        void RebuildQuietly()
+        {
+            quietRebuild = true;
+            try { ShowSection(section); }
+            finally { quietRebuild = false; }
+            transition.Finish();
+        }
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool PrintWindow(IntPtr window, IntPtr dc, uint flags);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool RedrawWindow(IntPtr window, IntPtr rect, IntPtr region, uint flags);
+        // The outgoing frame is what is on screen now, so it comes straight from the
+        // compositor (a few ms) instead of re-rendering every control (~40 ms).
+        // Incoming frames must stay off screen: use CaptureClient for those.
+        Bitmap CaptureShownClient()
+        {
+            if (IsHandleCreated && Visible && WindowState != FormWindowState.Minimized && !designTransition.Visible)
+            {
+                var frame = new Bitmap(Math.Max(1, ClientSize.Width), Math.Max(1, ClientSize.Height), System.Drawing.Imaging.PixelFormat.Format32bppRgb);
+                bool captured = false;
+                try
+                {
+                    // Paint pending invalidations first so the copy is current.
+                    RedrawWindow(Handle, IntPtr.Zero, IntPtr.Zero, 0x0100 | 0x0080);
+                    using (var g = Graphics.FromImage(frame))
+                    {
+                        IntPtr dc = g.GetHdc();
+                        try { captured = PrintWindow(Handle, dc, 1 | 2); }
+                        finally { g.ReleaseHdc(dc); }
+                    }
+                }
+                catch (Exception) { captured = false; }
+                if (captured) return frame;
+                frame.Dispose();
+            }
+            return CaptureClient();
         }
         Bitmap CaptureClient()
         {

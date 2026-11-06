@@ -18,6 +18,9 @@ namespace WinDynamicIsland
         readonly Label heading = new Label(), subtitle = new Label();
         readonly GlassButton save = new GlassButton { Primary = true };
         IslandScrollPanel body; string section = "General"; bool rebuilding;
+        // Set while a theme or palette crossfade covers the window: the page is
+        // rebuilt underneath without its own slide transition (and its captures).
+        bool quietRebuild;
         bool closingForExit;
         readonly Timer autoSave = new Timer { Interval = 450 };
         string savedDraft;
@@ -129,7 +132,7 @@ namespace WinDynamicIsland
             var previousSection = section;
             var previousCollectors = new List<Action>(collect);
             string previousHeading = heading.Text;
-            bool animate = Visible && body != null && !exporting && Program.Settings.InterfaceAnimations;
+            bool animate = Visible && body != null && !exporting && !quietRebuild && Program.Settings.InterfaceAnimations;
             rebuilding = true;
             try
             {

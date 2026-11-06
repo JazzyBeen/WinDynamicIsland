@@ -31,19 +31,27 @@ namespace WinDynamicIsland
                     {
                         host.Controls.Add(slider); host.Show(); Application.DoEvents();
                         bool synchronized = true;
-                        slider.ValueChanged += delegate { synchronized &= Field<float>(slider, "displayValue") == slider.Value; };
+                        slider.ValueChanged += delegate { synchronized &= Math.Abs(Field<float>(slider, "displayValue") - slider.Value) <= .5f; };
                         Mouse(slider, "OnMouseDown", 82, 63);
                         foreach (int x in new[] { 120, 225, 410, 570, 310, 70, 590 })
                         {
                             // No message pumping: a busy input queue must not prevent the visual update.
                             Mouse(slider, "OnMouseMove", x, 63);
-                            Check(Field<float>(slider, "displayValue") == slider.Value, (material ? "Material" : "Classic") + " thumb immediately follows pointer at " + x);
+                            float expected = Math.Max(0, Math.Min(100, (x - 26) * 100f / (slider.Width - 52)));
+                            float shown = Field<float>(slider, "displayValue");
+                            Check(Math.Abs(shown - expected) < .01f || shown == slider.Value, (material ? "Material" : "Classic") + " thumb immediately follows pointer at " + x);
+                            Check(Math.Abs(shown - slider.Value) <= .5f, (material ? "Material" : "Classic") + " number matches the thumb at " + x);
                         }
                         Check(synchronized, "ValueChanged observers see the synchronized thumb and number");
                         Mouse(slider, "OnMouseUp", 26, 63);
                         Check(slider.Value == 0 && Field<float>(slider, "displayValue") == 0 && !slider.Capture, "release commits the final position without a timer tick");
                         Mouse(slider, "OnMouseDown", 300, 63); slider.Capture = false;
                         Check(!Field<bool>(slider, "dragging"), "capture loss releases the drag state");
+                        slider.Magnetic = false;
+                        Mouse(slider, "OnMouseDown", 26 + (slider.Width - 52) / 2 + 3, 63);
+                        Check(slider.Value != 50 && Math.Abs(Field<float>(slider, "displayValue") - 50) > .2f, "non-magnetic sliders do not snap to the midpoint");
+                        Mouse(slider, "OnMouseUp", 26 + (slider.Width - 52) / 2 + 3, 63);
+                        slider.Magnetic = true;
                         Program.Settings.InterfaceAnimations = false; slider.Value = 100;
                         Check(Field<float>(slider, "displayValue") == 100, "disabled animation updates the rendered track immediately");
                     }
