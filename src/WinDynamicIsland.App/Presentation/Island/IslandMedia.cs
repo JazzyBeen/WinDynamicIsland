@@ -13,7 +13,9 @@ namespace WinDynamicIsland
 {
     internal sealed partial class Island
     {
-        const int MediaWidth = 400, MediaHeight = 176, MediaSmallWidth = 124, MediaSmallHeight = 40;
+        static int MediaWidth { get { return 400 + (int)Math.Round(16 * AppDesign.Amount); } }
+        static int MediaHeight { get { return 176 + (int)Math.Round(24 * AppDesign.Amount); } }
+        const int MediaSmallWidth = 124, MediaSmallHeight = 40;
         bool mediaMode, mediaAvailable, mediaEntering, mediaExiting, mediaDragging;
         MediaSnapshot mediaData;
         string pinnedMediaId;
@@ -64,7 +66,7 @@ namespace WinDynamicIsland
             mediaAvailable = snapshot != null && !snapshot.Stopped;
             if (snapshot != null)
             {
-                mediaPresentation.Accept(snapshot, DateTime.UtcNow);
+                mediaPresentation.Accept(snapshot, PreciseClock.UtcNow);
                 var old = mediaData;
                 mediaData = snapshot;
                 if (old != null)
@@ -102,7 +104,7 @@ namespace WinDynamicIsland
             mediaEntering = true;
             mediaExiting = false;
             mediaDragging = false;
-            mediaAppeared = mediaMorphAt = DateTime.UtcNow;
+            mediaAppeared = mediaMorphAt = PreciseClock.UtcNow;
             mediaFrom = 0;
             mediaTo = expanded ? 1 : 0;
             mediaPulseAt = mediaAppeared.AddMilliseconds(OpeningMs);
@@ -187,7 +189,7 @@ namespace WinDynamicIsland
         }
         void MorphMedia(bool expanded)
         {
-            var now = DateTime.UtcNow;
+            var now = PreciseClock.UtcNow;
             var frame = MediaMotionAt(now);
             mediaFromWidth = frame.Width;
             mediaFromHeight = frame.Height;
@@ -206,7 +208,7 @@ namespace WinDynamicIsland
         {
             if (!mediaMode || mediaExiting)
                 return;
-            var now = DateTime.UtcNow;
+            var now = PreciseClock.UtcNow;
             var frame = MediaMotionAt(now);
             mediaExitWidth = frame.Width;
             mediaExitHeight = frame.Height;
@@ -221,7 +223,7 @@ namespace WinDynamicIsland
         }
         void AnimateMedia()
         {
-            var now = DateTime.UtcNow;
+            var now = PreciseClock.UtcNow;
             if (mediaExiting && (now - mediaExitAt).TotalMilliseconds >= mediaExitDuration + MotionExposureMs)
             {
                 Hide();
@@ -246,7 +248,7 @@ namespace WinDynamicIsland
             var trail = MediaMotionAt(now.AddMilliseconds(-MotionExposureMs));
             long tick = now.Ticks / TimeSpan.TicksPerMillisecond / (amount < 0.1 ? 50 : 33);
             bool movingBars = IsFocus || mediaData != null && mediaData.Playing && (amount < 0.1 || amount > 0.85 && mediaData.CanSeek);
-            if (!dirty && current == previousFrame && trail == previousTrail && (!movingBars || tick == mediaPaintTick))
+            if (!dirty && !AppDesign.Transitioning && current == previousFrame && trail == previousTrail && (!movingBars || tick == mediaPaintTick))
                 return;
             previousFrame = current;
             previousTrail = trail;
@@ -255,16 +257,11 @@ namespace WinDynamicIsland
             var samples = new RectangleF[current == trail ? 1 : MotionSamples];
             for (int i = 0; i < samples.Length; i++)
                 samples[i] = MediaMotionAt(now.AddMilliseconds(-MotionExposureMs * i / Math.Max(1, samples.Length - 1)));
-            using (var face = DrawMediaFace((int)Math.Round(MediaSmallWidth + (MediaWidth - MediaSmallWidth) * amount), (int)Math.Round(MediaSmallHeight + (MediaHeight - MediaSmallHeight) * amount), amount))
-            using (var frame = IslandSurface.Render(face, samples))
+            PresentFrame(LiveFace(() => DrawMediaFace((int)Math.Round(MediaSmallWidth + (MediaWidth - MediaSmallWidth) * amount), (int)Math.Round(MediaSmallHeight + (MediaHeight - MediaSmallHeight) * amount), amount)), samples);
+            if (now >= mediaDebugAt)
             {
-                var area = Program.TargetScreen.Bounds;
-                IslandSurface.Present(Handle, frame, area.Left + (area.Width - IslandSurface.CanvasWidth) / 2, area.Top + (Preview ? 16 : IslandSurface.OriginY));
-                if (now >= mediaDebugAt)
-                {
-                    mediaDebugAt = now.AddSeconds(2);
-                    Program.Log("island-frame.txt", "Visible=" + Visible + "; window=" + Bounds + "; body=" + current + "; amount=" + amount.ToString("F2") + "; screen=" + area);
-                }
+                mediaDebugAt = now.AddSeconds(2);
+                Program.Log("island-frame.txt", "Visible=" + Visible + "; window=" + Bounds + "; body=" + current + "; amount=" + amount.ToString("F2") + "; screen=" + Program.TargetScreen.Bounds);
             }
         }
         void MediaOutsideClick(Point point)
@@ -272,7 +269,7 @@ namespace WinDynamicIsland
             if (!mediaMode || mediaExiting || mediaTo != 1)
                 return;
             var local = PointToClient(point);
-            if (!MediaMotionAt(DateTime.UtcNow).Contains(local.X, local.Y))
+            if (!MediaMotionAt(PreciseClock.UtcNow).Contains(local.X, local.Y))
                 MorphMedia(false);
         }
         static void TextLine(Graphics g, string text, Font font, Brush brush, RectangleF box)
@@ -282,14 +279,15 @@ namespace WinDynamicIsland
         }
         Bitmap DrawMediaFace(int width, int height, double amount)
         {
-            var face = new Bitmap(width, height, PixelFormat.Format32bppPArgb);
+            if (AppDesign.Material) return DrawMaterialMediaFace(width, height, amount);
+            var face = NewFace(width, height);
             using (var g = Graphics.FromImage(face))
             {
                 g.Clear(Color.Transparent);
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
                 using (var path = RoundRect(new Rectangle(0, 0, width - 1, height - 1), 64))
-                    g.FillPath(Brushes.Black, path);
+                    using (var fill = new SolidBrush(AppDesign.IslandBackground)) g.FillPath(fill, path);
                 if (mediaData == null)
                     return face;
                 if (IsFocus) DrawFocusGlow(g, width, height);
@@ -322,7 +320,7 @@ namespace WinDynamicIsland
                 if (IsFocus && amount < 0.4)
                 {
                     using (var font = new Font("Segoe UI", 10, FontStyle.Bold))
-                        TextLine(g, Math.Max(0, (int)Math.Ceiling((mediaData.End - mediaPresentation.PositionAt(DateTime.UtcNow)) / 60)) + (L.Language == "en" ? " min" : " мин"), font, Brushes.White, new RectangleF(51, (height - 20) / 2, width - 57, 22));
+                        TextLine(g, Math.Max(0, (int)Math.Ceiling((mediaData.End - mediaPresentation.PositionAt(PreciseClock.UtcNow)) / 60)) + (L.Language == "en" ? " min" : " мин"), font, Brushes.White, new RectangleF(51, (height - 20) / 2, width - 57, 22));
                 }
                 else if (amount < 0.4)
                 {
@@ -356,7 +354,7 @@ namespace WinDynamicIsland
                     }
                     float trackWidth = width - 44;
                     double range = mediaData.End - mediaData.Start;
-                    double position = mediaDragging ? mediaDragPosition : mediaPresentation.PositionAt(DateTime.UtcNow);
+                    double position = mediaDragging ? mediaDragPosition : mediaPresentation.PositionAt(PreciseClock.UtcNow);
                     float fraction = range > 0 ? (float)Math.Max(0, Math.Min(1, (position - mediaData.Start) / range)) : 0;
                     using (var background = new Pen(Color.FromArgb(alpha, 55, 55, 60), 4))
                     using (var filled = new Pen(Color.FromArgb(alpha, 205, 208, 214), 4))
@@ -397,20 +395,25 @@ namespace WinDynamicIsland
         }
         PointF MediaPoint(MouseEventArgs e)
         {
-            var rect = MediaMotionAt(DateTime.UtcNow);
+            var rect = MediaMotionAt(PreciseClock.UtcNow);
             return new PointF((e.X - rect.X) * MediaWidth / rect.Width, (e.Y - rect.Y) * MediaHeight / rect.Height);
         }
         void MediaMouseDown(MouseEventArgs e)
         {
             if (e.Button != MouseButtons.Left || mediaExiting || mediaData == null)
                 return;
-            if (MediaAmount(DateTime.UtcNow) < 0.5)
+            if (MediaAmount(PreciseClock.UtcNow) < 0.5)
             {
                 MorphMedia(true);
                 return;
             }
             var point = MediaPoint(e);
-            mediaCollapseAt = DateTime.UtcNow.AddMilliseconds((Program.Settings.MediaCollapseSeconds * 1000));
+            mediaCollapseAt = PreciseClock.UtcNow.AddMilliseconds((Program.Settings.MediaCollapseSeconds * 1000));
+            if (AppDesign.Material)
+            {
+                MaterialMediaMouseDown(point);
+                return;
+            }
             if (point.Y >= 84 && point.Y <= 124 && mediaData.CanSeek)
             {
                 mediaDragging = true;
@@ -423,9 +426,9 @@ namespace WinDynamicIsland
                 if (Math.Abs(point.X - MediaWidth / 2) < 25 && mediaData.CanToggle)
                     SendMediaCommand("toggle", 0);
                 else if (mediaData.CanSeek && Math.Abs(point.X - (MediaWidth / 2 - 78)) < 25)
-                    SendMediaCommand("seek", mediaPresentation.PositionAt(DateTime.UtcNow) - 10);
+                    SendMediaCommand("seek", mediaPresentation.PositionAt(PreciseClock.UtcNow) - 10);
                 else if (mediaData.CanSeek && Math.Abs(point.X - (MediaWidth / 2 + 78)) < 25)
-                    SendMediaCommand("seek", mediaPresentation.PositionAt(DateTime.UtcNow) + 10);
+                    SendMediaCommand("seek", mediaPresentation.PositionAt(PreciseClock.UtcNow) + 10);
             }
         }
         void MediaMouseMove(MouseEventArgs e)
@@ -433,7 +436,7 @@ namespace WinDynamicIsland
             if (mediaDragging)
                 UpdateMediaDrag(MediaPoint(e).X);
             if (mediaTo == 1)
-                mediaCollapseAt = DateTime.UtcNow.AddMilliseconds((Program.Settings.MediaCollapseSeconds * 1000));
+                mediaCollapseAt = PreciseClock.UtcNow.AddMilliseconds((Program.Settings.MediaCollapseSeconds * 1000));
         }
         void MediaMouseUp(MouseEventArgs e)
         {
@@ -456,9 +459,9 @@ namespace WinDynamicIsland
             if (mediaData != null && mediaData.Command != null)
             {
                 if (name == "seek")
-                    mediaPresentation.Seek(value, DateTime.UtcNow);
+                    mediaPresentation.Seek(value, PreciseClock.UtcNow);
                 mediaData.Command(name, value);
-                mediaCollapseAt = DateTime.UtcNow.AddMilliseconds((Program.Settings.MediaCollapseSeconds * 1000));
+                mediaCollapseAt = PreciseClock.UtcNow.AddMilliseconds((Program.Settings.MediaCollapseSeconds * 1000));
                 dirty = true;
             }
         }
@@ -511,7 +514,7 @@ namespace WinDynamicIsland
                 island.timer.Stop();
                 string appName;
                 island.mediaData = new MediaSnapshot { Id = "Yandex.H3PIY6KEH3URTYXLWJYZZW5KEM", Title = "Название трека", Artist = "Исполнитель", AppName = "Яндекс Браузер", Playing = true, CanToggle = true, CanSeek = true, Position = 73, End = 218, Icon = AppIdentity.IconFor("Yandex.H3PIY6KEH3URTYXLWJYZZW5KEM", out appName) };
-                island.mediaPresentation.Accept(island.mediaData, DateTime.UtcNow);
+                island.mediaPresentation.Accept(island.mediaData, PreciseClock.UtcNow);
                 using (var face = island.DrawMediaFace(MediaWidth, MediaHeight, 1))
                     face.Save(Path.Combine(folder, "media-expanded.png"));
                 using (var face = island.DrawMediaFace(MediaSmallWidth, MediaSmallHeight, 0))
@@ -521,6 +524,7 @@ namespace WinDynamicIsland
                 using (var face = island.DrawFace(260, 40, 1))
                     face.Save(Path.Combine(folder, "headphones.png"));
                 island.compactKind = CompactNoticeKind.Battery;
+                island.title = L.T("LowBattery");
                 island.compactValue = 20;
                 using (var face = island.DrawFace(260, 40, 1))
                     face.Save(Path.Combine(folder, "battery.png"));

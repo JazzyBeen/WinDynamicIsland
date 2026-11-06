@@ -13,7 +13,7 @@ namespace WinDynamicIsland
         readonly Panel footer = new BufferedPanel();
         readonly PageTransitionSurface transition = new PageTransitionSurface();
         readonly Dictionary<string, int> scrollPositions = new Dictionary<string, int>();
-        readonly Timer revealTimer = new Timer { Interval = 16 };
+        readonly Timer revealTimer = new FrameTimer();
         readonly Stopwatch revealClock = new Stopwatch();
         bool exporting, firstReveal = true;
         internal bool PageAnimating
@@ -154,6 +154,7 @@ namespace WinDynamicIsland
                 captureUi.Dispose();
                 revealTimer.Dispose();
                 transition.Dispose();
+                designTransition.Dispose();
             }
             base.Dispose(disposing);
         }

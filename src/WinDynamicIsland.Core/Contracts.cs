@@ -15,6 +15,7 @@ namespace WinDynamicIsland.Core
     public sealed class MediaSnapshot : IDisposable
     {
         public string Id, Title, Artist, AppName;
+        public string TrackTitle, PlaylistName;
         public bool Playing, Stopped, Foreground, CanToggle, CanSeek;
         public double Position, Start, End, Rate = 1;
         public Bitmap Icon, Artwork;

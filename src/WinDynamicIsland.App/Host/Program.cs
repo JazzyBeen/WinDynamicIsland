@@ -8,12 +8,13 @@ using System.Windows.Forms;
 using WinDynamicIsland.Core;
 
 [assembly: System.Reflection.AssemblyTitle("Win Dynamic Island")]
-[assembly: System.Reflection.AssemblyVersion("2.2.4.0")]
+[assembly: System.Reflection.AssemblyVersion("2.3.1.0")]
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("WinDynamicIsland.Tests")]
 namespace WinDynamicIsland
 {
     internal static class Program
     {
+        internal const string Version = "2.3.1";
         internal static readonly string DataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinDynamicIsland");
         internal static readonly SettingsStore Store = new SettingsStore(Path.Combine(DataPath, "settings.json"));
         internal static AppSettings Settings = new AppSettings();
@@ -50,6 +51,9 @@ namespace WinDynamicIsland
             Directory.CreateDirectory(DataPath);
             Settings = Store.Load();
             if (args.Length > 0 && args[0].StartsWith("--render-", StringComparison.Ordinal)) Settings = new AppSettings();
+            if (Array.IndexOf(args, "--material") >= 0) Settings.InterfaceDesign = "Material";
+            AppDesign.Change(Settings.InterfaceDesign == "Material", false);
+            AppDesign.ConfigurePalette();
             L.Language = Settings.Language;
             try
             {
@@ -59,12 +63,12 @@ namespace WinDynamicIsland
             SetCurrentProcessExplicitAppUserModelID("WinDynamicIsland.Desktop");
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            if (args.Length == 2 && args[0] == "--render-focus") { Island.ExportFocusPreview(args[1]); return; }
+            if (args.Length >= 2 && args[0] == "--render-focus") { Island.ExportFocusPreview(args[1]); return; }
             if (args.Length > 0 && args[0] == "--capture-profile") { CaptureWorker.Run(args.Length > 1 ? args[1] : "ru"); return; }
             if (args.Length == 3 && args[0] == "--capture-watch") { try { Process.GetProcessById(int.Parse(args[1])).WaitForExit(); } catch { } try { Recovery.Restore(args[2]); } catch { } return; }
             if (args.Length > 0 && args[0] == "--check")
             {
-                Log("health.txt", "Version=2.2.4; Startup=" + StartupRegistration.IsEnabled + "; SotaProfile=" + File.Exists(ApiProfile.PathName));
+                Log("health.txt", "Version=" + Version + "; Design=" + Settings.InterfaceDesign + "; Startup=" + StartupRegistration.IsEnabled + "; SotaProfile=" + File.Exists(ApiProfile.PathName));
                 return;
             }
             if (args.Length > 0 && args[0] == "--check-api")
@@ -84,17 +88,17 @@ namespace WinDynamicIsland
                 catch { Environment.ExitCode = 1; }
                 return;
             }
-            if (args.Length == 2 && args[0] == "--render-features")
+            if (args.Length >= 2 && args[0] == "--render-features")
             {
                 Island.ExportFeaturePreview(args[1]);
                 return;
             }
-            if (args.Length == 2 && args[0] == "--render-huds")
+            if (args.Length >= 2 && args[0] == "--render-huds")
             {
                 Island.ExportHudPreview(args[1]);
                 return;
             }
-            if (args.Length == 2 && args[0] == "--render-motion-frames")
+            if (args.Length >= 2 && args[0] == "--render-motion-frames")
             {
                 Island.ExportMotionPreview(args[1]);
                 return;
@@ -106,7 +110,7 @@ namespace WinDynamicIsland
                     NotificationCatalog.Refresh();
                 }
                 catch { }
-                if (args.Length == 3)
+                if (args.Length >= 3 && (args[2] == "ru" || args[2] == "en"))
                 {
                     Settings.Language = args[2];
                     L.Language = args[2];
@@ -117,7 +121,7 @@ namespace WinDynamicIsland
                 }
                 return;
             }
-            if (args.Length == 2 && args[0] == "--render-navigation")
+            if (args.Length >= 2 && args[0] == "--render-navigation")
             {
                 using (var form = new SettingsForm(null))
                     form.ExportNavigationPreview(args[1]);

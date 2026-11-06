@@ -44,7 +44,7 @@ namespace WinDynamicIsland
                 }
                 if (current.Visible)
                 {
-                    var now = DateTime.UtcNow;
+                    var now = PreciseClock.UtcNow;
                     var old = current.mediaMode ? current.MediaMotionAt(now) : current.MotionAt(now);
                     if (current.notification)
                     {
@@ -66,7 +66,7 @@ namespace WinDynamicIsland
         }
         void UpdateHud(Notice notice)
         {
-            var now = DateTime.UtcNow;
+            var now = PreciseClock.UtcNow;
             var size = HudSizeAt(now);
             if (compactKind != notice.Kind || hudWide != notice.Wide)
             {
@@ -104,8 +104,8 @@ namespace WinDynamicIsland
                     island.compactValue = example.Value;
                     island.title = example.Title;
                     island.BeginHud(example);
-                    island.hudShapeAt = DateTime.UtcNow.AddSeconds(-1);
-                    var size = island.HudSizeAt(DateTime.UtcNow.AddSeconds(1));
+                    island.hudShapeAt = PreciseClock.UtcNow.AddSeconds(-1);
+                    var size = island.HudSizeAt(PreciseClock.UtcNow.AddSeconds(1));
                     using (var frame = island.DrawFace((int)size.Width, (int)size.Height, 1))
                         frame.Save(Path.Combine(folder, "hud-" + i + ".png"));
                 }
@@ -117,9 +117,9 @@ namespace WinDynamicIsland
             hudActive = notice.Active;
             hudFromWidth = notice.Kind == CompactNoticeKind.Volume ? (notice.Wide ? 380 : 280) : 260;
             hudFromHeight = notice.Wide && notice.Kind == CompactNoticeKind.Volume ? 28 : 44;
-            hudShapeAt = DateTime.UtcNow;
+            hudShapeAt = PreciseClock.UtcNow;
             hudFromValue = notice.Value;
-            hudValueAt = DateTime.UtcNow;
+            hudValueAt = PreciseClock.UtcNow;
         }
         void DrawControlHud(Graphics g, int width, int height)
         {
@@ -127,7 +127,7 @@ namespace WinDynamicIsland
             float center = height / 2f;
             if (compactKind == CompactNoticeKind.Volume)
             {
-                double wideAmount = hudWide ? Ease((DateTime.UtcNow - hudShapeAt).TotalMilliseconds / 170) : 0;
+                double wideAmount = hudWide ? Ease((PreciseClock.UtcNow - hudShapeAt).TotalMilliseconds / 170) : 0;
                 var foreground = Color.FromArgb((int)Math.Round(255 * (1 - wideAmount)), Color.White);
                 using (var brush = new SolidBrush(foreground))
                 {
@@ -146,7 +146,7 @@ namespace WinDynamicIsland
                     using (var path = RoundRect(new Rectangle((int)x, (int)y, (int)trackWidth, 5), 5))
                     using (var track = new SolidBrush(Color.FromArgb(55, 55, 59)))
                         g.FillPath(track, path);
-                    float amount = (float)Math.Max(0, Math.Min(1, HudValueAt(DateTime.UtcNow) / 100));
+                    float amount = (float)Math.Max(0, Math.Min(1, HudValueAt(PreciseClock.UtcNow) / 100));
                     if (amount > 0)
                         using (var path = RoundRect(new Rectangle((int)x, (int)y, Math.Max(5, (int)(trackWidth * amount)), 5), 5))
                             g.FillPath(Brushes.White, path);

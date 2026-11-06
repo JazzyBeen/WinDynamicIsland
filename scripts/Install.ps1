@@ -32,11 +32,15 @@ if($MigrateLegacy){
 foreach($name in @('WinDynamicIsland.exe','IslandGuard.exe')){Copy-Item -LiteralPath (Join-Path $Source $name) -Destination $install -Force}
 if(Test-Path -LiteralPath (Join-Path $Source 'licenses')){Copy-Item (Join-Path $Source 'licenses') $install -Recurse -Force}
 Copy-Item (Join-Path $Source 'WinDynamicIsland.Core.dll') $install -Force
+Copy-Item (Join-Path $Source 'MaterialColorUtilities.dll') $install -Force
 Copy-Item (Join-Path $Source 'codex-icon.png') $data -Force
-if(Test-Path -LiteralPath (Join-Path $Source 'Music')){
+# Packages ship app\Music; a source build keeps the pack in artifacts\music-pack.
+$music=Join-Path $Source 'Music'
+if(-not(Test-Path -LiteralPath $music)){$music=Join-Path $root 'artifacts\music-pack\Music'}
+if(Test-Path -LiteralPath $music){
     New-Item -ItemType Directory -Path (Join-Path $data 'Music') -Force | Out-Null
-    Copy-Item (Join-Path $Source 'Music\*') (Join-Path $data 'Music') -Recurse -Force
-}
+    Copy-Item (Join-Path $music '*') (Join-Path $data 'Music') -Recurse -Force
+}else{Write-Warning 'Focus music is not installed: run scripts\Download-Music.ps1'}
 $extension=Join-Path $install 'browser-extension';New-Item -ItemType Directory -Path $extension -Force | Out-Null
 Get-ChildItem (Join-Path $Source 'browser-extension') -File | Where-Object {$_.Name -ne 'connection.js'} | Copy-Item -Destination $extension -Force
 $shell=New-Object -ComObject WScript.Shell

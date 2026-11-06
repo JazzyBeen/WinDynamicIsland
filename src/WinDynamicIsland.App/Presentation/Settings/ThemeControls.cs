@@ -6,7 +6,11 @@ namespace WinDynamicIsland
 {
     internal sealed class IslandScrollPanel : FlowLayoutPanel
     {
-        int offset, contentHeight; bool arranging, dragging; float dragOffset;
+        readonly ScrollViewport viewport;
+        readonly ScrollBar scrollbar;
+        int offset, contentHeight; bool arranging;
+        double wheelRemainder;
+        internal Panel Viewport { get { return viewport; } }
         internal int ScrollOffset
         {
             get
@@ -18,15 +22,29 @@ namespace WinDynamicIsland
         {
             get
             {
-                return Math.Max(0, contentHeight - ClientSize.Height);
+                return Math.Max(0, contentHeight - viewport.ClientSize.Height);
             }
         }
         internal IslandScrollPanel()
         {
             DoubleBuffered = true;
-            BackColor = Color.Black;
+            BackColor = IslandTheme.Background;
             AutoScroll = false;
             ResizeRedraw = true;
+            viewport = new ScrollViewport(this) { Dock = DockStyle.Fill, BackColor = BackColor, Size = Size };
+            scrollbar = new ScrollBar(this) { BackColor = BackColor };
+            viewport.Controls.Add(this);
+            viewport.Controls.Add(scrollbar);
+            scrollbar.BringToFront();
+            viewport.SizeChanged += delegate { ResizeViewport(); };
+            ResizeViewport();
+        }
+        void ResizeViewport()
+        {
+            if (arranging || IsDisposed) return;
+            int width = Math.Max(1, viewport.ClientSize.Width - 12);
+            if (Width != width) Width = width;
+            else PerformLayout();
         }
         protected override void OnControlAdded(ControlEventArgs e)
         {
@@ -39,11 +57,11 @@ namespace WinDynamicIsland
             {
                 if (!control.IsHandleCreated || !IsHandleCreated)
                     return;
-                var top = PointToClient(control.PointToScreen(Point.Empty)).Y;
+                var top = viewport.PointToClient(control.PointToScreen(Point.Empty)).Y;
                 if (top < 0)
                     ScrollTo(offset + top - 8);
-                else if (top + control.Height > ClientSize.Height)
-                    ScrollTo(offset + top + control.Height - ClientSize.Height + 8);
+                else if (top + control.Height > viewport.ClientSize.Height)
+                    ScrollTo(offset + top + control.Height - viewport.ClientSize.Height + 8);
             };
             control.ControlAdded += delegate (object sender, ControlEventArgs e)
             {
@@ -54,7 +72,7 @@ namespace WinDynamicIsland
         }
         protected override void OnLayout(LayoutEventArgs e)
         {
-            if (arranging)
+            if (arranging || viewport == null || scrollbar == null)
                 return;
             arranging = true;
             try
@@ -67,10 +85,12 @@ namespace WinDynamicIsland
                 contentHeight = Padding.Top + Padding.Bottom;
                 foreach (Control child in Controls)
                     contentHeight = Math.Max(contentHeight, child.Bottom + child.Margin.Bottom + Padding.Bottom);
+                Height = Math.Max(viewport.ClientSize.Height, contentHeight);
                 offset = Math.Max(0, Math.Min(MaximumOffset, offset));
-                if (offset != 0)
-                    foreach (Control child in Controls)
-                        child.Top -= offset;
+                Top = -offset;
+                scrollbar.SetBounds(viewport.ClientSize.Width - 12, 0, 12, viewport.ClientSize.Height);
+                scrollbar.Visible = MaximumOffset > 0;
+                scrollbar.Invalidate();
             }
             finally { arranging = false; }
             Invalidate();
@@ -81,66 +101,112 @@ namespace WinDynamicIsland
             if (next == offset)
                 return;
             offset = next;
-            PerformLayout();
-            Invalidate(true);
+            // Move one clipped surface; card positions and their layout stay unchanged.
+            Top = -offset;
+            scrollbar.Invalidate();
         }
         protected override void OnMouseWheel(MouseEventArgs e)
         {
-            ScrollTo(offset - e.Delta / 120 * 54);
+            Wheel(e);
+            base.OnMouseWheel(e);
+        }
+        void Wheel(MouseEventArgs e)
+        {
+            wheelRemainder -= e.Delta * 54d / 120;
+            int pixels = (int)wheelRemainder;
+            wheelRemainder -= pixels;
+            ScrollTo(offset + pixels);
             var handled = e as HandledMouseEventArgs;
             if (handled != null)
                 handled.Handled = true;
-            base.OnMouseWheel(e);
         }
-        RectangleF Thumb
+        sealed class ScrollViewport : Panel
         {
-            get
+            readonly IslandScrollPanel owner;
+            internal ScrollViewport(IslandScrollPanel owner)
             {
-                float h = Math.Max(32, ClientSize.Height * ClientSize.Height / (float)Math.Max(1, contentHeight));
-                return new RectangleF(Width - 5, MaximumOffset == 0 ? 0 : offset * (ClientSize.Height - h) / MaximumOffset, 3, h);
+                this.owner = owner;
+                DoubleBuffered = true;
+                AutoScroll = false;
+            }
+            protected override void OnMouseWheel(MouseEventArgs e)
+            {
+                owner.Wheel(e);
+                base.OnMouseWheel(e);
             }
         }
-        protected override void OnMouseDown(MouseEventArgs e)
+        sealed class ScrollBar : Control
         {
-            if (e.Button == MouseButtons.Left && e.X >= Width - 13 && MaximumOffset > 0)
+            readonly IslandScrollPanel owner;
+            bool dragging; float dragOffset;
+            internal ScrollBar(IslandScrollPanel owner)
             {
-                var thumb = Thumb;
-                dragOffset = thumb.Contains(e.Location) ? e.Y - thumb.Y : thumb.Height / 2;
-                dragging = true;
-                Capture = true;
-                Drag(e.Y);
+                this.owner = owner;
+                SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+                TabStop = false;
             }
-            base.OnMouseDown(e);
-        }
-        void Drag(int y)
-        {
-            ScrollTo((int)Math.Round((y - dragOffset) * MaximumOffset / Math.Max(1, Height - Thumb.Height)));
-        }
-        protected override void OnMouseMove(MouseEventArgs e)
-        {
-            if (dragging)
-                Drag(e.Y);
-            base.OnMouseMove(e);
-        }
-        protected override void OnMouseUp(MouseEventArgs e)
-        {
-            dragging = false;
-            Capture = false;
-            base.OnMouseUp(e);
-        }
-        protected override void OnPaint(PaintEventArgs e)
-        {
-            base.OnPaint(e);
-            if (MaximumOffset <= 0)
-                return;
-            using (var path = IslandTheme.Round(Thumb, 2))
-            using (var brush = new SolidBrush(Color.FromArgb(85, 85, 92)))
-                e.Graphics.FillPath(brush, path);
+            RectangleF Thumb
+            {
+                get
+                {
+                    float h = Math.Min(Height, Math.Max(32, Height * (float)Height / Math.Max(1, owner.contentHeight)));
+                    return new RectangleF(5, owner.MaximumOffset == 0 ? 0 : owner.offset * (Height - h) / owner.MaximumOffset, 3, h);
+                }
+            }
+            protected override void OnMouseDown(MouseEventArgs e)
+            {
+                if (e.Button == MouseButtons.Left && owner.MaximumOffset > 0)
+                {
+                    var thumb = Thumb;
+                    dragOffset = e.Y >= thumb.Top && e.Y <= thumb.Bottom ? e.Y - thumb.Y : thumb.Height / 2;
+                    dragging = true;
+                    Capture = true;
+                    Drag(e.Y);
+                }
+                base.OnMouseDown(e);
+            }
+            void Drag(int y)
+            {
+                owner.ScrollTo((int)Math.Round((y - dragOffset) * owner.MaximumOffset / Math.Max(1, Height - Thumb.Height)));
+            }
+            protected override void OnMouseMove(MouseEventArgs e)
+            {
+                if (dragging) Drag(e.Y);
+                base.OnMouseMove(e);
+            }
+            protected override void OnMouseUp(MouseEventArgs e)
+            {
+                if (dragging) Drag(e.Y);
+                dragging = false;
+                Capture = false;
+                base.OnMouseUp(e);
+            }
+            protected override void OnMouseCaptureChanged(EventArgs e)
+            {
+                if (!Capture) dragging = false;
+                base.OnMouseCaptureChanged(e);
+            }
+            protected override void OnMouseWheel(MouseEventArgs e)
+            {
+                owner.Wheel(e);
+                base.OnMouseWheel(e);
+            }
+            protected override void OnPaint(PaintEventArgs e)
+            {
+                base.OnPaint(e);
+                if (owner.MaximumOffset <= 0) return;
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (var path = IslandTheme.Round(Thumb, 2))
+                using (var brush = new SolidBrush(IslandTheme.Secondary)) e.Graphics.FillPath(brush, path);
+            }
         }
     }
     internal static class IslandTheme
     {
-        internal static readonly Color Accent = Color.FromArgb(10, 132, 255), Secondary = Color.FromArgb(152, 152, 160);
+        internal static Color Accent { get { return AppDesign.Material ? AppDesign.Primary : Color.FromArgb(10, 132, 255); } }
+        internal static Color Secondary { get { return AppDesign.Material ? AppDesign.Muted : Color.FromArgb(152, 152, 160); } }
+        internal static Color Foreground { get { return AppDesign.Material ? AppDesign.Ink : Color.White; } }
+        internal static Color Background { get { return AppDesign.Material ? AppDesign.Surface : Color.Black; } }
         internal static GraphicsPath Round(RectangleF r, float radius)
         {
             float d = Math.Min(radius * 2, Math.Min(r.Width, r.Height));
@@ -161,6 +227,11 @@ namespace WinDynamicIsland
         {
             g.SmoothingMode = SmoothingMode.AntiAlias;
             var box = new RectangleF(bounds.X + .7f, bounds.Y + .7f, bounds.Width - 1.4f, bounds.Height - 1.4f);
+            if (AppDesign.Material)
+            {
+                AppDesign.Fill(g, box, selected ? bounds.Height / 2f : 20, selected ? AppDesign.Secondary : AppDesign.Container);
+                return;
+            }
             using (var path = Round(box, radius))
             {
                 using (var fill = new SolidBrush(selected ? Color.FromArgb(35, 35, 39) : Color.FromArgb(18, 18, 20)))
@@ -180,7 +251,7 @@ namespace WinDynamicIsland
         internal GlassCard()
         {
             DoubleBuffered = true;
-            BackColor = Color.Black;
+            BackColor = IslandTheme.Background;
         }
         protected override void OnPaint(PaintEventArgs e)
         {
@@ -192,7 +263,7 @@ namespace WinDynamicIsland
     {
         bool hover, pressed, visualDisposed;
         float hoverAmount, pressAmount;
-        readonly Timer interactionTimer = new Timer { Interval = 16 };
+        readonly Timer interactionTimer = new FrameTimer();
         DateTime interactionAt;
         internal bool Primary, Selected, Navigation;
         internal GlassButton()
@@ -200,13 +271,13 @@ namespace WinDynamicIsland
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer, true);
             FlatStyle = FlatStyle.Flat;
             FlatAppearance.BorderSize = 0;
-            BackColor = Color.Black;
-            ForeColor = Color.White;
+            BackColor = IslandTheme.Background;
+            ForeColor = IslandTheme.Foreground;
             Cursor = Cursors.Hand;
             interactionTimer.Tick += delegate
             {
-                float dt = (float)(DateTime.UtcNow - interactionAt).TotalMilliseconds;
-                interactionAt = DateTime.UtcNow;
+                float dt = (float)(PreciseClock.UtcNow - interactionAt).TotalMilliseconds;
+                interactionAt = PreciseClock.UtcNow;
                 hoverAmount = Approach(hoverAmount, hover ? 1 : 0, dt / 120);
                 pressAmount = Approach(pressAmount, pressed ? 1 : 0, dt / 85);
                 if (!Program.Settings.InterfaceAnimations)
@@ -227,7 +298,7 @@ namespace WinDynamicIsland
         {
             if (visualDisposed)
                 return;
-            interactionAt = DateTime.UtcNow;
+            interactionAt = PreciseClock.UtcNow;
             interactionTimer.Start();
             Invalidate();
         }
@@ -278,6 +349,12 @@ namespace WinDynamicIsland
                 e.Graphics.TranslateTransform(Width * (1 - scale) / 2, Height * (1 - scale) / 2);
                 e.Graphics.ScaleTransform(scale, scale);
             }
+            if (AppDesign.Material)
+            {
+                PaintMaterial(e.Graphics);
+                e.Graphics.Restore(drawing);
+                return;
+            }
             if (Primary)
                 using (var path = IslandTheme.Round(new RectangleF(1, 1, Width - 2, Height - 2), Height / 2f))
                 using (var brush = new SolidBrush(Color.FromArgb((int)(255 - 30 * hoverAmount), (int)(255 - 30 * hoverAmount), (int)(255 - 25 * hoverAmount))))
@@ -303,6 +380,29 @@ namespace WinDynamicIsland
                     e.Graphics.DrawPath(pen, path);
             e.Graphics.Restore(drawing);
         }
+        void PaintMaterial(Graphics g)
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            var bounds = new RectangleF(1, 1, Width - 2, Height - 2);
+            float radius = Primary || Navigation ? Height / 2f : 16 + 6 * pressAmount;
+            if (Primary || Selected && !Navigation)
+                AppDesign.Fill(g, bounds, radius, Primary ? AppDesign.Primary : AppDesign.PrimaryContainer);
+            else if (!Navigation)
+                AppDesign.Fill(g, bounds, radius, AppDesign.High);
+            if (hoverAmount > 0 || pressAmount > 0)
+                AppDesign.Fill(g, bounds, radius, Color.FromArgb((int)(hoverAmount * 18 + pressAmount * 12), Primary ? AppDesign.OnPrimary : AppDesign.Ink));
+            Color color = !Enabled ? AppDesign.Outline : Primary ? AppDesign.OnPrimary : Selected ? AppDesign.OnContainer : AppDesign.Ink;
+            int inset = Padding.Left + 12;
+            if (Navigation)
+            {
+                AppDesign.Symbol(g, AppDesign.NavigationIcon(Tag as string), new RectangleF(16, 0, 24, Height), color, 22);
+                inset = 56;
+            }
+            TextRenderer.DrawText(g, Text, Font, new Rectangle(inset, 0, Math.Max(1, Width - inset - 16), Height), color, (TextAlign == ContentAlignment.MiddleCenter ? TextFormatFlags.HorizontalCenter : TextFormatFlags.Left) | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+            if (Focused && ShowFocusCues)
+                using (var path = IslandTheme.Round(new RectangleF(3, 3, Width - 6, Height - 6), radius))
+                using (var pen = new Pen(AppDesign.Primary, 2)) g.DrawPath(pen, path);
+        }
         protected override void Dispose(bool disposing)
         {
             if (disposing)
@@ -318,11 +418,12 @@ namespace WinDynamicIsland
         internal static void Style(ContextMenuStrip menu)
         {
             menu.Renderer = new IslandMenuRenderer();
+            menu.Font = AppTypography.Create(10);
             menu.ShowImageMargin = false;
             menu.ShowCheckMargin = false;
             menu.Padding = new Padding(6);
-            menu.BackColor = Color.FromArgb(24, 24, 27);
-            menu.ForeColor = Color.White;
+            menu.BackColor = AppDesign.Material ? AppDesign.High : Color.FromArgb(24, 24, 27);
+            menu.ForeColor = IslandTheme.Foreground;
             menu.SizeChanged += delegate
             {
                 if (menu.Width < 2 || menu.Height < 2)
@@ -338,10 +439,11 @@ namespace WinDynamicIsland
         }
         protected override void OnRenderToolStripBackground(ToolStripRenderEventArgs e)
         {
-            e.Graphics.Clear(Color.FromArgb(24, 24, 27));
+            e.Graphics.Clear(AppDesign.Material ? AppDesign.High : Color.FromArgb(24, 24, 27));
         }
         protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)
         {
+            if (AppDesign.Material) return;
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             using (var path = IslandTheme.Round(new RectangleF(.5f, .5f, e.ToolStrip.Width - 1, e.ToolStrip.Height - 1), 13))
             using (var pen = new Pen(Color.FromArgb(65, 65, 70), 1))
@@ -353,37 +455,38 @@ namespace WinDynamicIsland
                 return;
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             using (var path = IslandTheme.Round(new RectangleF(0, 0, e.Item.Width, e.Item.Height), 8))
-            using (var brush = new SolidBrush(IslandTheme.Accent))
+            using (var brush = new SolidBrush(AppDesign.Material ? AppDesign.Secondary : IslandTheme.Accent))
                 e.Graphics.FillPath(brush, path);
         }
         protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e)
         {
-            e.TextColor = Color.White;
+            e.TextColor = AppDesign.Material ? (e.Item.Selected ? AppDesign.OnSecondary : AppDesign.Ink) : Color.White;
             base.OnRenderItemText(e);
         }
     }
     internal sealed class ToggleSwitch : CheckBox
     {
-        readonly Timer timer = new Timer { Interval = 16 }; float amount; DateTime previous;
+        readonly Timer timer = new FrameTimer(); float amount; DateTime previous;
         internal ToggleSwitch()
         {
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer, true);
-            BackColor = Color.Black;
-            ForeColor = Color.White;
+            BackColor = IslandTheme.Background;
+            ForeColor = IslandTheme.Foreground;
             Cursor = Cursors.Hand;
             timer.Tick += Animate;
         }
         protected override void OnCheckedChanged(EventArgs e)
         {
-            previous = DateTime.UtcNow;
+            previous = PreciseClock.UtcNow;
             timer.Start();
             base.OnCheckedChanged(e);
         }
         void Animate(object sender, EventArgs e)
         {
-            float step = (float)(DateTime.UtcNow - previous).TotalMilliseconds / 150;
-            previous = DateTime.UtcNow;
+            float step = (float)(PreciseClock.UtcNow - previous).TotalMilliseconds / 150;
+            previous = PreciseClock.UtcNow;
             amount = Checked ? Math.Min(1, amount + step) : Math.Max(0, amount - step);
+            if (!Program.Settings.InterfaceAnimations) amount = Checked ? 1 : 0;
             if (amount == 0 || amount == 1)
                 timer.Stop();
             Invalidate();
@@ -391,9 +494,24 @@ namespace WinDynamicIsland
         protected override void OnPaint(PaintEventArgs e)
         {
             var g = e.Graphics;
-            g.Clear(Color.Black);
+            g.Clear(IslandTheme.Background);
             IslandTheme.Card(g, ClientRectangle);
-            TextRenderer.DrawText(g, Text, Font, new Rectangle(20, 0, Width - 112, Height), Color.White, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.WordBreak);
+            TextRenderer.DrawText(g, Text, Font, new Rectangle(20, 0, Width - 112, Height), IslandTheme.Foreground, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.WordBreak);
+            if (AppDesign.Material)
+            {
+                var materialTrack = new RectangleF(Width - 76, (Height - 32) / 2f, 52, 32);
+                AppDesign.Fill(g, materialTrack, 16, AppDesign.Blend(AppDesign.Highest, AppDesign.Primary, amount));
+                if (amount < 1)
+                    using (var path = IslandTheme.Round(materialTrack, 16))
+                    using (var pen = new Pen(Color.FromArgb((int)(255 * (1 - amount)), AppDesign.Outline), 2)) g.DrawPath(pen, path);
+                float diameter = 16 + 8 * amount;
+                using (var thumb = new SolidBrush(AppDesign.Blend(AppDesign.Outline, AppDesign.OnPrimary, amount)))
+                    g.FillEllipse(thumb, materialTrack.X + 16 + 20 * amount - diameter / 2, materialTrack.Y + 16 - diameter / 2, diameter, diameter);
+                if (Focused && ShowFocusCues)
+                    using (var path = IslandTheme.Round(new RectangleF(Width - 82, (Height - 44) / 2f, 64, 44), 22))
+                    using (var pen = new Pen(AppDesign.Primary, 2)) g.DrawPath(pen, path);
+                return;
+            }
             var track = new RectangleF(Width - 73, (Height - 28) / 2f, 50, 28);
             using (var path = IslandTheme.Round(track, 14))
             using (var brush = new SolidBrush(Color.FromArgb((int)(58 + (10 - 58) * amount), (int)(58 + (132 - 58) * amount), (int)(64 + (255 - 64) * amount))))
@@ -418,7 +536,7 @@ namespace WinDynamicIsland
     {
         readonly string label; readonly int min, max; readonly int[] magnets;
         int value; bool dragging; float displayValue, dragAmount;
-        readonly Timer motionTimer = new Timer { Interval = 16 }; DateTime motionAt;
+        readonly Timer motionTimer = new FrameTimer(); DateTime motionAt;
         internal int Value
         {
             get
@@ -431,6 +549,7 @@ namespace WinDynamicIsland
                 if (this.value == next)
                     return;
                 this.value = next;
+                if (dragging || !Program.Settings.InterfaceAnimations) displayValue = next;
                 AnimateThumb();
                 if (ValueChanged != null)
                     ValueChanged(this, EventArgs.Empty);
@@ -447,16 +566,16 @@ namespace WinDynamicIsland
             magnets = new[] { min, min + (max - min) / 4, min + (max - min) / 2, value, max };
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.Selectable, true);
             Size = new Size(620, 91);
-            BackColor = Color.Black;
-            ForeColor = Color.White;
+            BackColor = IslandTheme.Background;
+            ForeColor = IslandTheme.Foreground;
             TabStop = true;
             Cursor = Cursors.Hand;
             AccessibleRole = AccessibleRole.Slider;
             AccessibleName = label;
             motionTimer.Tick += delegate
             {
-                float t = (float)(DateTime.UtcNow - motionAt).TotalMilliseconds;
-                motionAt = DateTime.UtcNow;
+                float t = (float)(PreciseClock.UtcNow - motionAt).TotalMilliseconds;
+                motionAt = PreciseClock.UtcNow;
                 displayValue += (value - displayValue) * Math.Min(1, t / 55);
                 dragAmount += ((dragging ? 1 : 0) - dragAmount) * Math.Min(1, t / 70);
                 if (!Program.Settings.InterfaceAnimations)
@@ -475,8 +594,11 @@ namespace WinDynamicIsland
         }
         void AnimateThumb()
         {
-            motionAt = DateTime.UtcNow;
-            motionTimer.Start();
+            if (!motionTimer.Enabled)
+            {
+                motionAt = PreciseClock.UtcNow;
+                motionTimer.Start();
+            }
             Invalidate();
         }
         internal int Snap(double fraction)
@@ -504,6 +626,7 @@ namespace WinDynamicIsland
                 Focus();
                 dragging = true;
                 Capture = true;
+                displayValue = value;
                 At(e.X);
                 AnimateThumb();
             }
@@ -517,14 +640,20 @@ namespace WinDynamicIsland
         }
         protected override void OnMouseUp(MouseEventArgs e)
         {
+            if (dragging && e.Button == MouseButtons.Left) At(e.X);
             dragging = false;
             Capture = false;
             AnimateThumb();
             base.OnMouseUp(e);
         }
+        protected override void OnMouseCaptureChanged(EventArgs e)
+        {
+            if (!Capture && dragging) { dragging = false; AnimateThumb(); }
+            base.OnMouseCaptureChanged(e);
+        }
         protected override bool IsInputKey(Keys key)
         {
-            return key == Keys.Left || key == Keys.Right || base.IsInputKey(key);
+            return key == Keys.Left || key == Keys.Right || key == Keys.Up || key == Keys.Down || key == Keys.Home || key == Keys.End || base.IsInputKey(key);
         }
         protected override void OnKeyDown(KeyEventArgs e)
         {
@@ -539,16 +668,17 @@ namespace WinDynamicIsland
                 e.Handled = true;
             }
             if (e.KeyCode == Keys.Home)
-                Value = min;
+            { Value = min; e.Handled = true; }
             if (e.KeyCode == Keys.End)
-                Value = max;
+            { Value = max; e.Handled = true; }
             base.OnKeyDown(e);
         }
         protected override void OnPaint(PaintEventArgs e)
         {
             var g = e.Graphics;
-            g.Clear(Color.Black);
+            g.Clear(IslandTheme.Background);
             IslandTheme.Card(g, ClientRectangle);
+            if (AppDesign.Material) { PaintMaterialSlider(g); return; }
             TextRenderer.DrawText(g, label, Font, new Rectangle(20, 13, Width - 95, 24), Color.White, TextFormatFlags.Left | TextFormatFlags.EndEllipsis);
             TextRenderer.DrawText(g, Value.ToString(), Font, new Rectangle(Width - 70, 13, 48, 24), IslandTheme.Secondary, TextFormatFlags.Right);
             float length = Width - 52, y = 63, x = 26 + length * (displayValue - min) / Math.Max(1, max - min);
@@ -573,6 +703,25 @@ namespace WinDynamicIsland
                 g.FillEllipse(shadow, x - 12, y - 12, 24, 24);
             float radius = 9 + dragAmount * 1.5f;
             g.FillEllipse(Brushes.White, x - radius, y - radius, radius * 2, radius * 2);
+        }
+        void PaintMaterialSlider(Graphics g)
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            TextRenderer.DrawText(g, label, Font, new Rectangle(20, 12, Width - 105, 28), AppDesign.Ink, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+            AppDesign.Fill(g, new RectangleF(Width - 75, 12, 52, 28), 14, AppDesign.PrimaryContainer);
+            TextRenderer.DrawText(g, Value.ToString(), Font, new Rectangle(Width - 75, 12, 52, 28), AppDesign.OnContainer, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            float x = 26 + (Width - 52) * (displayValue - min) / Math.Max(1, max - min);
+            AppDesign.Fill(g, new RectangleF(26, 55, Math.Max(0, x - 32), 16), 8, AppDesign.Primary);
+            AppDesign.Fill(g, new RectangleF(x + 6, 55, Math.Max(0, Width - 32 - x), 16), 8, AppDesign.Secondary);
+            AppDesign.Fill(g, new RectangleF(x - 2, 47 - 2 * dragAmount, 4, 32 + 4 * dragAmount), 2, AppDesign.Primary);
+            foreach (int stop in magnets)
+            {
+                float at = 26 + (Width - 52) * (stop - min) / Math.Max(1, max - min);
+                using (var brush = new SolidBrush(at < x ? AppDesign.OnPrimary : AppDesign.OnSecondary)) g.FillEllipse(brush, at - 1, 62, 2, 2);
+            }
+            if (Focused && ShowFocusCues)
+                using (var path = IslandTheme.Round(new RectangleF(3, 3, Width - 6, Height - 6), 18))
+                using (var pen = new Pen(AppDesign.Primary, 2)) g.DrawPath(pen, path);
         }
         protected override void Dispose(bool disposing)
         {

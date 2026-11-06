@@ -7,24 +7,26 @@ namespace WinDynamicIsland
 {
     internal sealed class AnimatedNavigationPanel : FlowLayoutPanel
     {
-        readonly Timer timer = new Timer { Interval = 16 }; readonly Stopwatch elapsed = new Stopwatch();
-        RectangleF from, target; bool initialized;
+        readonly Timer timer = new FrameTimer(); readonly Stopwatch elapsed = new Stopwatch();
+        RectangleF from, target, shown; bool initialized;
+        Rectangle painted;
         internal AnimatedNavigationPanel()
         {
             DoubleBuffered = true;
-            BackColor = Color.Black;
+            BackColor = AppDesign.Material ? AppDesign.Container : Color.Black;
             timer.Tick += delegate
             {
-                Invalidate(true);
-                if (elapsed.ElapsedMilliseconds >= 230)
+                bool finished = elapsed.ElapsedMilliseconds >= (AppDesign.Material ? 300 : 230);
+                if (finished)
                     timer.Stop();
+                MoveHighlight(Current);
             };
         }
         RectangleF Current
         {
             get
             {
-                double t = timer.Enabled ? PageTransitionSurface.Ease(elapsed.Elapsed.TotalMilliseconds / 230) : 1;
+                double t = timer.Enabled ? (AppDesign.Material ? AppDesign.Spatial(elapsed.Elapsed.TotalMilliseconds / 300) : PageTransitionSurface.Ease(elapsed.Elapsed.TotalMilliseconds / 230)) : 1;
                 return new RectangleF((float)(from.X + (target.X - from.X) * t), (float)(from.Y + (target.Y - from.Y) * t), (float)(from.Width + (target.Width - from.Width) * t), (float)(from.Height + (target.Height - from.Height) * t));
             }
         }
@@ -35,9 +37,10 @@ namespace WinDynamicIsland
             var next = (RectangleF)button.Bounds;
             if (!initialized || !animate)
             {
-                from = target = next;
+                from = target = shown = next;
                 initialized = true;
                 timer.Stop();
+                painted = Rectangle.Empty;
                 Invalidate(true);
                 return;
             }
@@ -47,7 +50,7 @@ namespace WinDynamicIsland
             target = next;
             elapsed.Restart();
             timer.Start();
-            Invalidate(true);
+            MoveHighlight(from);
         }
         internal void Freeze()
         {
@@ -55,13 +58,23 @@ namespace WinDynamicIsland
                 return;
             from = target = Current;
             timer.Stop();
-            Invalidate(true);
+            MoveHighlight(target);
+        }
+        // The highlight is fixed when a frame is scheduled, so the painted area and
+        // the invalidated area always agree; only the band it travelled is redrawn.
+        void MoveHighlight(RectangleF highlight)
+        {
+            shown = highlight;
+            var area = Rectangle.Round(highlight);
+            area.Inflate(3, 3);
+            Invalidate(painted.Width > 0 && painted.Height > 0 ? Rectangle.Union(painted, area) : area, true);
+            painted = area;
         }
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
             if (initialized)
-                IslandTheme.Card(e.Graphics, Rectangle.Round(Current), true, 15);
+                IslandTheme.Card(e.Graphics, Rectangle.Round(shown), true, 15);
         }
         protected override void Dispose(bool disposing)
         {

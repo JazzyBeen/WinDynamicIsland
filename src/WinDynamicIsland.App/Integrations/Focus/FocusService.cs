@@ -121,6 +121,8 @@ namespace WinDynamicIsland
                     Id = "WinDynamicIsland.Focus." + self.sessionId + (self.clock.Resting ? "rest" : "work") + self.clock.Cycles,
                     Title = L.T(self.clock.Resting ? "FocusRest" : "FocusWork"),
                     Artist = (self.audioFailed ? L.T("FocusAudioError") : self.track) + " · " + (int)(self.clock.Duration / 60) + (L.Language == "en" ? " min" : " мин"),
+                    TrackTitle = self.audioFailed ? L.T("FocusAudioError") : self.track,
+                    PlaylistName = "Open Lo-Fi · " + (Program.Settings.FocusPlaylist == "Lofi" ? "Lo-fi" : "Ambient"),
                     AppName = "Pomodoro", Playing = !self.clock.Paused, CanToggle = true, CanSeek = true,
                     Position = self.clock.Position, End = self.clock.Duration,
                     Command = delegate(string name, double value)

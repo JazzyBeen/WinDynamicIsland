@@ -7,6 +7,16 @@ namespace WinDynamicIsland.Core
     {
         public static string Language = "ru";
         static readonly Dictionary<string, string[]> extra = new Dictionary<string, string[]> {
+            {"InterfaceDesign",new[]{"Дизайн интерфейса","Interface design"}},
+            {"PaletteSource",new[]{"Цветовая палитра","Color palette"}},
+            {"PaletteDefault",new[]{"Стандартная","Default"}}, {"PaletteCustom",new[]{"Свой цвет","Custom color"}}, {"PaletteWallpaper",new[]{"По обоям Windows","From Windows wallpaper"}},
+            {"PaletteWallpaperHelp",new[]{"Цвета подбираются по обоям экрана с островом и обновляются автоматически при смене обоев. Анализ выполняется локально.","Colors follow the wallpaper on the island's screen and update automatically when it changes. Analysis runs locally."}},
+            {"PickColor",new[]{"Выбрать свой цвет…","Choose a custom color…"}}, {"ColorPickerTitle",new[]{"Выбор цвета","Choose a color"}},
+            {"ApplyColor",new[]{"Применить цвет","Apply color"}}, {"CancelColor",new[]{"Отмена","Cancel"}},
+            {"RedChannel",new[]{"Красный","Red"}}, {"GreenChannel",new[]{"Зелёный","Green"}}, {"BlueChannel",new[]{"Синий","Blue"}},
+            {"InvalidColor",new[]{"Введите цвет в формате #RRGGBB","Enter a color as #RRGGBB"}},
+            {"ClassicDesign",new[]{"Оригинальный","Original"}},
+            {"DesignHelp",new[]{"Оформление меняется сразу во всём приложении. Ваши настройки и текущие подключения сохраняются.","The design changes immediately throughout the app. Your settings and active connections are preserved."}},
             {"AutoSaved",new[]{"Изменения сохраняются автоматически","Changes are saved automatically"}},
             {"Focus",new[]{"Фокус","Focus"}},
             {"FocusHelp",new[]{"Alt+B запускает или завершает Pomodoro. Работа сменяется отдыхом автоматически. Нажмите на маленький остров, чтобы раскрыть таймер и поставить его на паузу.","Alt+B starts or stops Pomodoro. Focus and break intervals alternate automatically. Click the compact island to expand the timer and pause it."}},

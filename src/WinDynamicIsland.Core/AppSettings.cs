@@ -6,6 +6,9 @@ namespace WinDynamicIsland.Core
 {
     public sealed class AppSettings
     {
+        public string InterfaceDesign { get; set; }
+        public string MaterialColorMode { get; set; }
+        public string MaterialSeedColor { get; set; }
         public bool FocusEnabled { get; set; }
         public int FocusMinutes { get; set; }
         public int BreakMinutes { get; set; }
@@ -198,6 +201,9 @@ namespace WinDynamicIsland.Core
         }
         public AppSettings()
         {
+            InterfaceDesign = "Classic";
+            MaterialColorMode = "Default";
+            MaterialSeedColor = "#6750A4";
             FocusEnabled = true;
             FocusMinutes = 50;
             BreakMinutes = 10;
@@ -231,6 +237,11 @@ namespace WinDynamicIsland.Core
         }
         public void Validate()
         {
+            InterfaceDesign = InterfaceDesign == "Material" ? "Material" : "Classic";
+            MaterialColorMode = MaterialColorMode == "Custom" || MaterialColorMode == "Wallpaper" ? MaterialColorMode : "Default";
+            int colorValue;
+            if (MaterialSeedColor == null || MaterialSeedColor.Length != 7 || MaterialSeedColor[0] != '#' || !int.TryParse(MaterialSeedColor.Substring(1), System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out colorValue)) MaterialSeedColor = "#6750A4";
+            MaterialSeedColor = MaterialSeedColor.ToUpperInvariant();
             FocusMinutes = Clamp(FocusMinutes, 1, 120);
             BreakMinutes = Clamp(BreakMinutes, 1, 60);
             FocusVolume = Clamp(FocusVolume, 0, 100);

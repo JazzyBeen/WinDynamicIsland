@@ -37,11 +37,14 @@ namespace WinDynamicIsland
             double dx = Math.Max(0, qx), dy = Math.Max(0, qy);
             return radius - Math.Sqrt(dx * dx + dy * dy) - Math.Min(Math.Max(qx, qy), 0);
         }
-        // Reuse the geometry and pixel buffer while the island rests at one size.
-        // The per-frame pass uses angle addition, avoiding per-pixel trig calls.
+        // Reuse the geometry, pixel buffer and clip ring while the island rests at
+        // one size. The per-frame pass uses angle addition, avoiding per-pixel trig
+        // calls, and visits only pixels near the edge: the centre is always black.
         sealed class FocusEdgeField : IDisposable
         {
             internal readonly int Width, Height, Depth;
+            internal readonly Region Ring;
+            readonly int[] lit;
             readonly float[] edges, sin, cos, sin2, cos2;
             readonly byte[] pixels;
             readonly Bitmap bitmap;
@@ -49,40 +52,53 @@ namespace WinDynamicIsland
             {
                 Width = width; Height = height;
                 Depth = Math.Max(4, Math.Min(30, (int)(height * .32)));
-                int count = width * height;
-                edges = new float[count]; sin = new float[count]; cos = new float[count];
-                sin2 = new float[count]; cos2 = new float[count]; pixels = new byte[count * 4];
-                bitmap = new Bitmap(width, height, PixelFormat.Format32bppPArgb);
+                int count = width * height, total = 0;
+                var field = new float[count];
+                pixels = new byte[count * 4];
                 for (int y = 0; y < height; y++)
                     for (int x = 0; x < width; x++)
                     {
                         int i = y * width + x;
-                        edges[i] = (float)(1 - Ease(Math.Max(0, FocusShapeInset(x, y, width, height)) / Depth));
-                        double angle = Math.Atan2((y - (height - 1) / 2d) / (height / 2d), (x - (width - 1) / 2d) / (width / 2d));
-                        sin[i] = (float)Math.Sin(angle); cos[i] = (float)Math.Cos(angle);
-                        sin2[i] = (float)Math.Sin(angle * 2); cos2[i] = (float)Math.Cos(angle * 2);
+                        pixels[i * 4 + 3] = 255;
+                        field[i] = (float)(1 - Ease(Math.Max(0, FocusShapeInset(x, y, width, height)) / Depth));
+                        if (field[i] != 0) total++;
                     }
+                lit = new int[total]; edges = new float[total];
+                sin = new float[total]; cos = new float[total]; sin2 = new float[total]; cos2 = new float[total];
+                for (int i = 0, k = 0; i < count; i++)
+                {
+                    if (field[i] == 0) continue;
+                    int x = i % width, y = i / width;
+                    double angle = Math.Atan2((y - (height - 1) / 2d) / (height / 2d), (x - (width - 1) / 2d) / (width / 2d));
+                    lit[k] = i; edges[k] = field[i];
+                    sin[k] = (float)Math.Sin(angle); cos[k] = (float)Math.Cos(angle);
+                    sin2[k] = (float)Math.Sin(angle * 2); cos2[k] = (float)Math.Cos(angle * 2);
+                    k++;
+                }
+                bitmap = new Bitmap(width, height, PixelFormat.Format32bppPArgb);
+                Ring = new Region(new Rectangle(0, 0, width, height));
+                using (var middle = RoundRect(new Rectangle(Depth, Depth, width - 1 - Depth * 2, height - 1 - Depth * 2), Math.Max(2, Math.Min(64, Math.Min(width - 1, height - 1)) - Depth * 2)))
+                    Ring.Exclude(middle);
             }
             internal Bitmap Render(double seconds)
             {
                 double sm = Math.Sin(seconds * Math.PI / 16), cm = Math.Cos(seconds * Math.PI / 16);
                 double sp = Math.Sin(seconds * Math.PI / 21), cp = Math.Cos(seconds * Math.PI / 21);
-                for (int i = 0; i < edges.Length; i++)
+                for (int k = 0; k < lit.Length; k++)
                 {
-                    double flow = .5 + .5 * (sin[i] * cm - cos[i] * sm);
-                    double glow = edges[i] * (.68 + .08 * (sin2[i] * cp + cos2[i] * sp));
-                    int at = i * 4;
+                    double flow = .5 + .5 * (sin[k] * cm - cos[k] * sm);
+                    double glow = edges[k] * (.68 + .08 * (sin2[k] * cp + cos2[k] * sp));
+                    int at = lit[k] * 4;
                     pixels[at] = (byte)((188 - 15 * flow) * glow);
                     pixels[at + 1] = (byte)((70 - 24 * flow) * glow);
                     pixels[at + 2] = (byte)((30 + 77 * flow) * glow);
-                    pixels[at + 3] = 255;
                 }
                 var data = bitmap.LockBits(new Rectangle(0, 0, Width, Height), ImageLockMode.WriteOnly, PixelFormat.Format32bppPArgb);
                 try { Marshal.Copy(pixels, 0, data.Scan0, pixels.Length); }
                 finally { bitmap.UnlockBits(data); }
                 return bitmap;
             }
-            public void Dispose() { bitmap.Dispose(); }
+            public void Dispose() { bitmap.Dispose(); Ring.Dispose(); }
         }
         static uint FocusDotHash(int row, int column)
         {
@@ -103,13 +119,10 @@ namespace WinDynamicIsland
             int depth = focusField.Depth;
             g.DrawImageUnscaled(focusField.Render(seconds), 0, 0);
             var state = g.Save();
-            using (var ring = new Region(new Rectangle(0, 0, width, height)))
-            using (var middle = RoundRect(new Rectangle(depth, depth, width - 1 - depth * 2, height - 1 - depth * 2), Math.Max(2, Math.Min(64, Math.Min(width - 1, height - 1)) - depth * 2)))
             using (var dot = new SolidBrush(Color.White))
             {
                 // Clipping also keeps enlarged dots out of the black central region.
-                ring.Exclude(middle);
-                g.SetClip(ring, CombineMode.Intersect);
+                g.SetClip(focusField.Ring, CombineMode.Intersect);
                 const double pitch = 7;
                 double driftX = seconds * .42, driftY = seconds * .19;
                 int firstRow = (int)Math.Floor(-driftY / pitch) - 1;
@@ -146,7 +159,9 @@ namespace WinDynamicIsland
                 island.timer.Stop();
                 island.focusPreviewSeconds = 0;
                 island.mediaData = new MediaSnapshot { Id = "WinDynamicIsland.Focus.work0", Title = L.T("FocusWork"), Artist = "Almost Floating · 50 " + (L.Language == "en" ? "min" : "мин"), AppName = "Pomodoro", Playing = true, CanToggle = true, CanSeek = true, Position = 1320, End = 3000 };
-                island.mediaPresentation.Accept(island.mediaData, DateTime.UtcNow);
+                island.mediaPresentation.Accept(island.mediaData, PreciseClock.UtcNow);
+                island.mediaData.TrackTitle = "Almost Floating";
+                island.mediaData.PlaylistName = "Open Lo-Fi · Ambient";
                 using (var face = island.DrawMediaFace(MediaWidth, MediaHeight, 1)) face.Save(System.IO.Path.Combine(folder, "focus-expanded.png"));
                 using (var face = island.DrawMediaFace(MediaSmallWidth, MediaSmallHeight, 0)) face.Save(System.IO.Path.Combine(folder, "focus-compact.png"));
                 for (int i = 0; i < 4; i++)

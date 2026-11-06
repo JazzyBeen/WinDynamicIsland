@@ -50,9 +50,19 @@ namespace WinDynamicIsland
         private static readonly object Sync = new object();
         private static Island instance;
         private static bool starting;
+        internal static void RefreshAppearance()
+        {
+            lock (Sync)
+            {
+                var current = instance;
+                if (current == null || current.IsDisposed || !current.IsHandleCreated) return;
+                try { current.BeginInvoke((Action)delegate { if (!current.IsDisposed) current.dirty = true; }); }
+                catch (InvalidOperationException) { }
+            }
+        }
         public static bool Preview;
         private static readonly ManualResetEvent Ready = new ManualResetEvent(false);
-        private readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer();
+        private readonly System.Windows.Forms.Timer timer = new FrameTimer();
         private readonly Icon logo;
         private readonly OutsideClickWatcher outsideClicks;
         private bool notification;
@@ -105,7 +115,7 @@ namespace WinDynamicIsland
             StartPosition = FormStartPosition.Manual;
             BackColor = Color.Black;
             DoubleBuffered = true;
-            appeared = changed = DateTime.UtcNow;
+            appeared = changed = PreciseClock.UtcNow;
             Size = new Size(IslandSurface.CanvasWidth, IslandSurface.CanvasHeight);
             var screen = Program.TargetScreen.Bounds;
             Location = new Point(screen.Left + (screen.Width - Width) / 2, screen.Top + (Preview ? 16 : IslandSurface.OriginY));
@@ -114,7 +124,6 @@ namespace WinDynamicIsland
                 logo = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
             }
             catch { }
-            timer.Interval = 16;
             timer.Tick += delegate (object sender, EventArgs args)
             {
                 try
@@ -251,11 +260,11 @@ namespace WinDynamicIsland
             status = newStatus;
             done = isDone;
             error = isError;
-            changed = DateTime.UtcNow;
+            changed = PreciseClock.UtcNow;
             if (!Visible || appeared == default(DateTime))
             {
                 progress = 0;
-                appeared = DateTime.UtcNow;
+                appeared = PreciseClock.UtcNow;
             }
             dirty = true;
             if (!Visible)
@@ -271,7 +280,7 @@ namespace WinDynamicIsland
                 AnimateMedia();
                 return;
             }
-            var now = DateTime.UtcNow;
+            var now = PreciseClock.UtcNow;
             double elapsed = (now - changed).TotalMilliseconds;
             if (done && elapsed >= HoldMs + OpeningMs + MotionExposureMs)
             {
@@ -292,7 +301,7 @@ namespace WinDynamicIsland
                 dirty = true;
             var current = MotionAt(now);
             var trail = MotionAt(now.AddMilliseconds(-MotionExposureMs));
-            if (!dirty && current == previousFrame && trail == previousTrail)
+            if (!dirty && !AppDesign.Transitioning && current == previousFrame && trail == previousTrail)
                 return;
             previousFrame = current;
             previousTrail = trail;
@@ -301,18 +310,44 @@ namespace WinDynamicIsland
             var samples = new RectangleF[current == trail ? 1 : MotionSamples];
             for (int i = 0; i < samples.Length; i++)
                 samples[i] = MotionAt(now.AddMilliseconds(-MotionExposureMs * i / Math.Max(1, samples.Length - 1)));
-            using (var face = DrawFaceAt(now))
-            using (var frame = IslandSurface.Render(face, samples))
+            PresentFrame(LiveFace(() => DrawFaceAt(now)), samples);
+            if (notification && progress >= 0.999 && presented != null)
             {
-                var area = Program.TargetScreen.Bounds;
-                IslandSurface.Present(Handle, frame, area.Left + (area.Width - IslandSurface.CanvasWidth) / 2, area.Top + (Preview ? 16 : IslandSurface.OriginY));
-                if (notification && progress >= 0.999 && presented != null)
-                {
-                    var callback = presented;
-                    presented = null;
-                    callback();
-                }
+                var callback = presented;
+                presented = null;
+                callback();
             }
+        }
+        // Live frames reuse one face bitmap and one layered surface; exports and
+        // tests still receive bitmaps they own and dispose.
+        IslandCanvas canvas;
+        Bitmap liveFace;
+        bool drawingLiveFace;
+        Bitmap LiveFace(Func<Bitmap> draw)
+        {
+            drawingLiveFace = true;
+            try { return draw(); }
+            finally { drawingLiveFace = false; }
+        }
+        Bitmap NewFace(int width, int height)
+        {
+            if (!drawingLiveFace)
+                return new Bitmap(width, height, PixelFormat.Format32bppPArgb);
+            if (liveFace == null || liveFace.Width != width || liveFace.Height != height)
+            {
+                if (liveFace != null)
+                    liveFace.Dispose();
+                liveFace = new Bitmap(width, height, PixelFormat.Format32bppPArgb);
+            }
+            return liveFace;
+        }
+        void PresentFrame(Bitmap face, RectangleF[] samples)
+        {
+            if (canvas == null)
+                canvas = new IslandCanvas();
+            canvas.Compose(face, samples);
+            var area = Program.TargetScreen.Bounds;
+            canvas.Present(Handle, area.Left + (area.Width - IslandSurface.CanvasWidth) / 2, area.Top + (Preview ? 16 : IslandSurface.OriginY));
         }
         private RectangleF MotionAt(DateTime time)
         {
@@ -391,7 +426,7 @@ namespace WinDynamicIsland
         }
         private Bitmap DrawFace(int width, int height, double amount)
         {
-            var face = new Bitmap(width, height, PixelFormat.Format32bppPArgb);
+            var face = NewFace(width, height);
             using (var g = Graphics.FromImage(face))
             {
                 g.Clear(Color.Transparent);
@@ -399,9 +434,14 @@ namespace WinDynamicIsland
                 g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
                 var bounds = new Rectangle(0, 0, width - 1, height - 1);
                 using (var path = RoundRect(bounds, 64))
-                using (var fill = new SolidBrush(Color.Black))
+                using (var fill = new SolidBrush(AppDesign.IslandBackground))
                 {
                     g.FillPath(fill, path);
+                }
+                if (AppDesign.Material)
+                {
+                    DrawMaterialNotice(g, width, height);
+                    return face;
                 }
                 if (compactKind != CompactNoticeKind.None)
                 {
@@ -477,7 +517,7 @@ namespace WinDynamicIsland
                 island.timer.Stop();
                 island.done = true;
                 island.status = "Включён";
-                var basis = DateTime.UtcNow;
+                var basis = PreciseClock.UtcNow;
                 island.changed = basis;
                 island.appeared = basis;
                 double[] times = { ExpandStartMs, 170, 220, OpeningMs, OpeningMs + SettleMs * SettlePeak, OpeningMs + SettleMs, 2000, 3140, 3000 + OpeningMs - 170, 3380 };
@@ -546,7 +586,7 @@ namespace WinDynamicIsland
                     Process.Start(new ProcessStartInfo("tg://") { UseShellExecute = true });
                 }
                 catch { }
-                changed = DateTime.UtcNow.AddMilliseconds(-HoldMs);
+                changed = PreciseClock.UtcNow.AddMilliseconds(-HoldMs);
             }
         }
         protected override void OnMouseMove(MouseEventArgs e)
@@ -567,6 +607,8 @@ namespace WinDynamicIsland
             {
                 timer.Dispose();
                 if (focusField != null) focusField.Dispose();
+                if (canvas != null) canvas.Dispose();
+                if (liveFace != null) liveFace.Dispose();
                 outsideClicks.Dispose();
                 if (logo != null)
                     logo.Dispose();

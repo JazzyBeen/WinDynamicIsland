@@ -11,16 +11,18 @@ namespace WinDynamicIsland
         internal BufferedPanel()
         {
             DoubleBuffered = true;
-            BackColor = Color.Black;
+            BackColor = IslandTheme.Background;
             ResizeRedraw = true;
         }
     }
     // Animate two finished pages. Native child controls are never resized or faded per frame.
     internal sealed class PageTransitionSurface : Control
     {
-        readonly Timer timer = new Timer { Interval = 16 };
+        readonly Timer timer = new FrameTimer();
         readonly Stopwatch elapsed = new Stopwatch();
         Bitmap previous, next; int direction = 1;
+        PagePixels previousPixels, nextPixels;
+        readonly PageCompositor compositor = new PageCompositor();
         internal bool Running
         {
             get
@@ -31,7 +33,7 @@ namespace WinDynamicIsland
         internal PageTransitionSurface()
         {
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer, true);
-            BackColor = Color.Black;
+            BackColor = IslandTheme.Background;
             Visible = false;
             TabStop = false;
             timer.Tick += delegate
@@ -75,6 +77,7 @@ namespace WinDynamicIsland
         internal void Begin(Bitmap frame, int direction)
         {
             next = frame;
+            nextPixels = null;
             this.direction = direction;
             elapsed.Restart();
             timer.Start();
@@ -92,34 +95,45 @@ namespace WinDynamicIsland
             value = Math.Max(0, Math.Min(1, value));
             return 1 - Math.Pow(1 - value, 3);
         }
-        void Layer(Graphics graphics, Bitmap image, double alpha, double scale, double offset)
+        void Layer(Bitmap image, ref PagePixels pixels, double alpha, double scale, double offset)
         {
             if (image == null || alpha <= 0)
                 return;
             var box = new Rectangle((int)Math.Round((Width - Width * scale) / 2), (int)Math.Round(offset), Math.Max(1, (int)Math.Round(Width * scale)), Math.Max(1, (int)Math.Round(Height * scale)));
-            using (var attributes = new ImageAttributes())
-            {
-                var matrix = new ColorMatrix();
-                matrix.Matrix33 = (float)alpha;
-                attributes.SetColorMatrix(matrix);
-                graphics.DrawImage(image, box, 0, 0, image.Width, image.Height, GraphicsUnit.Pixel, attributes);
-            }
+            if (pixels == null)
+                pixels = new PagePixels(image);
+            compositor.Layer(pixels, box, alpha);
         }
         void PaintFrame(Graphics graphics, double progress)
         {
-            graphics.Clear(Color.Black);
-            graphics.CompositingQuality = CompositingQuality.HighSpeed;
-            graphics.InterpolationMode = InterpolationMode.HighQualityBilinear;
             if (next == null)
             {
+                graphics.Clear(IslandTheme.Background);
                 if (previous != null)
                     graphics.DrawImageUnscaled(previous, 0, 0);
                 return;
             }
+            compositor.Begin(Width, Height, IslandTheme.Background);
             double amount = Ease(progress);
-            double outgoing = 1 - Ease(progress / .45), incoming = Ease((progress - .12) / .88);
-            Layer(graphics, previous, outgoing, 1 - .008 * amount, -direction * 8 * amount);
-            Layer(graphics, next, incoming, .988 + .012 * amount, direction * 14 * (1 - amount));
+            if (direction == 0)
+            {
+                Layer(previous, ref previousPixels, 1, 1, 0);
+                Layer(next, ref nextPixels, amount, 1, 0);
+            }
+            else if (AppDesign.Material)
+            {
+                double spatial = AppDesign.Spatial(progress);
+                Layer(previous, ref previousPixels, 1 - Ease(progress / .6), 1 - .015 * spatial, -direction * 16 * spatial);
+                Layer(next, ref nextPixels, Ease((progress - .08) / .92), .97 + .03 * spatial, direction * 24 * (1 - spatial));
+            }
+            else
+            {
+                double outgoing = 1 - Ease(progress / .45), incoming = Ease((progress - .12) / .88);
+                Layer(previous, ref previousPixels, outgoing, 1 - .008 * amount, -direction * 8 * amount);
+                Layer(next, ref nextPixels, incoming, .988 + .012 * amount, direction * 14 * (1 - amount));
+            }
+            graphics.CompositingMode = CompositingMode.SourceCopy;
+            graphics.DrawImageUnscaled(compositor.Frame, 0, 0);
         }
         internal Bitmap RenderPreview(double progress)
         {
@@ -146,6 +160,7 @@ namespace WinDynamicIsland
             if (next != null)
                 next.Dispose();
             previous = next = null;
+            previousPixels = nextPixels = null;
         }
         protected override void OnSizeChanged(EventArgs e)
         {
@@ -159,6 +174,7 @@ namespace WinDynamicIsland
             {
                 timer.Dispose();
                 ClearFrames();
+                compositor.Dispose();
             }
             base.Dispose(disposing);
         }

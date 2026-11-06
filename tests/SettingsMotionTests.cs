@@ -32,13 +32,14 @@ namespace WinDynamicIsland
                     Check(!longPage.AutoScroll && (GetWindowLong(longPage.Handle,-16)&0x00300000)==0,"page windows never create the white native scrollbars");
                     int firstTop=longPage.Controls[0].Top;longPage.ScrollTo(180);int position=longPage.ScrollOffset;
                     for(int i=0;i<4;i++)longPage.PerformLayout();
-                    Check(position>0 && longPage.Controls[0].Top==firstTop-position,"repeated layout does not accumulate scroll offsets");
+                    Check(position>0 && longPage.Controls[0].Top==firstTop && longPage.Top==-position,"repeated layout keeps card positions stable and translates one surface");
                     Page(form,"About");Check(Field<IslandScrollPanel>(form,"body").ScrollOffset==0,"a short page does not inherit the previous page scroll");
                     Page(form,"Devices");Check(Field<IslandScrollPanel>(form,"body").ScrollOffset==position,"each section remembers its own scroll position");
                     string[] sequence={"General","Appearance","Media","Notifications","Devices","VPN","About"};
                     var switching=Stopwatch.StartNew();for(int i=0;i<21;i++)Page(form,sequence[i%sequence.Length]);Console.WriteLine("Average rapid navigation: "+(switching.Elapsed.TotalMilliseconds/21).ToString("F1")+" ms");
                     Wait(()=>!form.PageAnimating);
                     Check(Field<string>(form,"section")=="About","rapid switches finish on the last selected section");
+                    Check(Field<Panel>(form,"pageHost").Controls.Count==2,"rapid switches dispose the previous viewport without accumulating wrappers");
                     Check(buttons.SequenceEqual(navigation.Controls.OfType<GlassButton>())&&buttons.All(b=>!b.IsDisposed),"sidebar controls remain alive across tab changes");
                     Page(form,"Appearance");form.ClientSize=new System.Drawing.Size(860,660);Application.DoEvents();
                     var narrow=Field<IslandScrollPanel>(form,"body");

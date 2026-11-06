@@ -60,7 +60,7 @@ namespace WinDynamicIsland
             if (File.Exists(guard))
                 using (var owner = Process.GetCurrentProcess())
                     Process.Start(new ProcessStartInfo(guard, owner.Id + " " + owner.StartTime.ToUniversalTime().Ticks) { UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden });
-            Program.Log("host.txt", "Running; version=2.2.4; PID=" + Process.GetCurrentProcess().Id);
+            Program.Log("host.txt", "Running; version=" + Program.Version + "; PID=" + Process.GetCurrentProcess().Id);
             if (Program.Settings.ShowStartupIsland)
                 Program.Presenter.Status("Win Dynamic Island", L.T("Ready"), true, false);
             if (action == "--settings")
@@ -71,6 +71,14 @@ namespace WinDynamicIsland
         void ConfigureModules()
         {
             var next = new Dictionary<string, Func<IDisposable>>();
+            if (Program.Settings.InterfaceDesign == "Material" && Program.Settings.MaterialColorMode == "Wallpaper")
+                next["wallpaper-palette"] = () => new WallpaperPaletteMonitor(seed => ui.Post(_ =>
+                {
+                    if (quitting || Program.Settings.InterfaceDesign != "Material" || Program.Settings.MaterialColorMode != "Wallpaper") return;
+                    if (settings != null && !settings.IsDisposed && settings.Visible) settings.ApplyWallpaperPalette(seed);
+                    else AppDesign.WallpaperSeed(seed);
+                    Island.RefreshAppearance();
+                }, null));
             if (Program.Settings.BrowserEnabled && Program.Settings.MediaEnabled)
                 next["browser"] = () => new BrowserLoopback();
             if (Program.Settings.FocusEnabled)
@@ -148,6 +156,9 @@ namespace WinDynamicIsland
             Program.Store.Save(next);
             StartupRegistration.SetEnabled(next.StartWithWindows);
             Program.Settings = next;
+            AppDesign.Change(next.InterfaceDesign == "Material", true);
+            AppDesign.ConfigurePalette();
+            Island.RefreshAppearance();
             L.Language = next.Language;
             ConfigureModules();
             ConfigureTray();

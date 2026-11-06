@@ -17,8 +17,8 @@ namespace WinDynamicIsland
             this.selected = selected;
             this.all = all;
             visible = choices;
-            BackColor = Color.FromArgb(18, 18, 20);
-            ForeColor = Color.White;
+            BackColor = AppDesign.Material ? AppDesign.Container : Color.FromArgb(18, 18, 20);
+            ForeColor = IslandTheme.Foreground;
             Cursor = Cursors.Hand;
             TabStop = true;
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer, true);
@@ -111,12 +111,12 @@ namespace WinDynamicIsland
                 bool check = all || visible[i].Ids.Any(id => selected.Contains(id));
                 if (hover == i && !all)
                     using (var path = IslandTheme.Round(new RectangleF(0, y, Width - 9, RowHeight), 10))
-                    using (var fill = new SolidBrush(Color.FromArgb(37, 37, 41)))
+                    using (var fill = new SolidBrush(AppDesign.Material ? AppDesign.High : Color.FromArgb(37, 37, 41)))
                         g.FillPath(fill, path);
                 if (check)
                     using (var brush = new SolidBrush(IslandTheme.Accent))
                         g.FillEllipse(brush, 8, y + 8, 18, 18);
-                using (var pen = new Pen(check ? Color.White : Color.FromArgb(85, 85, 93), 1.6f))
+                using (var pen = new Pen(check ? (AppDesign.Material ? AppDesign.OnPrimary : Color.White) : AppDesign.Material ? AppDesign.Outline : Color.FromArgb(85, 85, 93), 1.6f))
                 {
                     if (!check)
                         g.DrawEllipse(pen, 8, y + 8, 18, 18);
@@ -126,7 +126,7 @@ namespace WinDynamicIsland
                         g.DrawLines(pen, new[] { new PointF(12, y + 17), new PointF(16, y + 21), new PointF(22, y + 13) });
                     }
                 }
-                TextRenderer.DrawText(g, visible[i].Name, Font, new Rectangle(38, y, Width - 55, RowHeight), Color.White, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                TextRenderer.DrawText(g, visible[i].Name, Font, new Rectangle(38, y, Width - 55, RowHeight), IslandTheme.Foreground, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
             }
             if (visible.Length * RowHeight > Height)
             {
@@ -144,6 +144,16 @@ namespace WinDynamicIsland
         {
             base.OnHandleCreated(e);
             SendMessage(Handle, 0x1501, new IntPtr(1), Hint ?? "");
+        }
+        protected override void WndProc(ref Message message)
+        {
+            base.WndProc(ref message);
+            if (message.Msg == 0x000f && AppDesign.Material && TextLength == 0 && !Focused)
+                using (var graphics = Graphics.FromHwnd(Handle))
+                {
+                    graphics.Clear(BackColor);
+                    TextRenderer.DrawText(graphics, Hint ?? "", Font, ClientRectangle, AppDesign.Muted, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                }
         }
     }
 }

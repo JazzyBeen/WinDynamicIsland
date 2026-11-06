@@ -17,23 +17,19 @@ namespace WinDynamicIsland
         readonly List<Action> collect = new List<Action>();
         readonly Label heading = new Label(), subtitle = new Label();
         readonly GlassButton save = new GlassButton { Primary = true };
-        FlowLayoutPanel body; string section = "General"; bool rebuilding;
+        IslandScrollPanel body; string section = "General"; bool rebuilding;
         bool closingForExit;
         readonly Timer autoSave = new Timer { Interval = 450 };
         string savedDraft;
-        readonly Color background = Color.Black, surface = Color.Black, muted = IslandTheme.Secondary, accent = Color.White;
+        Color background { get { return IslandTheme.Background; } }
+        Color surface { get { return IslandTheme.Background; } }
+        Color muted { get { return IslandTheme.Secondary; } }
+        Color accent { get { return IslandTheme.Foreground; } }
         [System.Runtime.InteropServices.DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
-            try
-            {
-                int dark = 1;
-                DwmSetWindowAttribute(Handle, 20, ref dark, 4);
-                int black = 0;
-                DwmSetWindowAttribute(Handle, 35, ref black, 4);
-            }
-            catch { }
+            UpdateTitleBar();
         }
         internal SettingsForm(Action<AppSettings> apply)
         {
@@ -47,7 +43,7 @@ namespace WinDynamicIsland
             ClientSize = new Size(980, 740);
             MinimumSize = new Size(860, 680);
             BackColor = background;
-            ForeColor = Color.White;
+            ForeColor = IslandTheme.Foreground;
             Font = AppTypography.Create(10);
             AutoScaleMode = AutoScaleMode.Dpi;
             try
@@ -60,18 +56,22 @@ namespace WinDynamicIsland
             navigation.Padding = new Padding(18, 22, 14, 16);
             navigation.FlowDirection = FlowDirection.TopDown;
             navigation.WrapContents = false;
-            navigation.BackColor = Color.Black;
+            navigation.BackColor = AppDesign.Material ? AppDesign.Container : Color.Black;
             Controls.Add(content);
             Controls.Add(navigation);
             content.Dock = DockStyle.Fill;
             content.Padding = new Padding(28, 24, 28, 22);
             InitializePageHost();
+            designTransition.Bounds = ClientRectangle;
+            designTransition.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom;
+            Controls.Add(designTransition);
             BuildNavigation();
             ShowSection("General");
+            ApplyVisualTheme();
         }
         Button Button(string text, Action click)
         {
-            var button = new GlassButton { Text = text, FlatStyle = FlatStyle.Flat, BackColor = surface, ForeColor = Color.White, Height = 38, Width = 620, Cursor = Cursors.Hand, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(12, 0, 0, 0), Margin = new Padding(0, 7, 0, 10) };
+            var button = new GlassButton { Text = text, FlatStyle = FlatStyle.Flat, BackColor = surface, ForeColor = IslandTheme.Foreground, Height = AppDesign.Material ? 44 : 38, Width = 620, Cursor = Cursors.Hand, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(12, 0, 0, 0), Margin = new Padding(0, 7, 0, 10) };
             button.FlatAppearance.BorderSize = 0;
             button.Click += delegate
             {
@@ -79,7 +79,7 @@ namespace WinDynamicIsland
                 {
                     click();
                 }
-                catch (Exception ex) { MessageBox.Show(this, ex.Message, L.T("Error"), MessageBoxButtons.OK, MessageBoxIcon.Information); }
+                catch (Exception ex) { AppDialog.Show(this, ex.Message, L.T("Error")); }
             };
             return button;
         }
@@ -114,7 +114,7 @@ namespace WinDynamicIsland
                 button.Tag = key;
                 navigation.Controls.Add(button);
             }
-            navigation.Controls.Add(new Label { Text = "2.2.4  ·  Windows", ForeColor = muted, Width = 180, Height = 32, Margin = new Padding(12, 32, 0, 0) });
+            navigation.Controls.Add(new Label { Text = Program.Version + "  ·  Windows", ForeColor = muted, Width = 180, Height = 32, Margin = new Padding(12, 32, 0, 0) });
         }
         void Collect()
         {
@@ -146,7 +146,7 @@ namespace WinDynamicIsland
                 pageHost.SuspendLayout();
                 if (previousBody != null)
                 {
-                    previousBody.Visible = false;
+                    previousBody.Viewport.Visible = false;
                     previousBody.SuspendLayout();
                 }
                 section = key;
@@ -154,7 +154,7 @@ namespace WinDynamicIsland
                 heading.Text = L.T(key);
                 subtitle.Text = L.T("AutoSaved");
                 save.Text = L.T("Save");
-                body = new IslandScrollPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = false, Padding = new Padding(0, 12, 8, 12), Font = Font, Visible = false, Size = new Size(Math.Max(1, pageHost.ClientSize.Width), Math.Max(1, pageHost.ClientSize.Height - 80)) };
+                body = new IslandScrollPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = false, Padding = new Padding(0, 12, 8, 12), Font = Font, Visible = false };
                 if (key == "General")
                 {
                     Help("GeneralHelp");
@@ -165,9 +165,11 @@ namespace WinDynamicIsland
                 }
                 else if (key == "Appearance")
                 {
+                    DesignChoice();
+                    if (AppDesign.Material) PaletteSettings();
                     Number("TopGap", draft.TopGap, 2, 48, v => draft.TopGap = v);
                     Number("Blur", draft.MotionBlur, 0, 48, v => draft.MotionBlur = v);
-                    Check("GlassStyle", draft.GlassStyle, v => draft.GlassStyle = v);
+                    if (!AppDesign.Material) Check("GlassStyle", draft.GlassStyle, v => draft.GlassStyle = v);
                     Check("InterfaceMotion", draft.InterfaceAnimations, v => draft.InterfaceAnimations = v);
                     Check("Settle", draft.SettleAnimation, v => draft.SettleAnimation = v);
                     var names = new List<string>();
@@ -250,8 +252,8 @@ namespace WinDynamicIsland
                     body.Controls.Add(Button(L.T("Preview"), () => Program.Presenter.Status("Win Dynamic Island", L.T("Ready"), true, false)));
                     body.Controls.Add(new Label { Text = L.T("Running"), ForeColor = IslandTheme.Accent, Width = 620, Height = 44, Margin = new Padding(0, 12, 0, 0) });
                 }
-                pageHost.Controls.Add(body);
-                pageHost.Controls.SetChildIndex(body, 0);
+                pageHost.Controls.Add(body.Viewport);
+                pageHost.Controls.SetChildIndex(body.Viewport, 0);
                 pageHost.ResumeLayout(true);
                 body.Visible = true;
                 body.PerformLayout();
@@ -259,21 +261,21 @@ namespace WinDynamicIsland
                 ((IslandScrollPanel)body).ScrollTo(scrollPositions.TryGetValue(key, out scroll) ? scroll : 0);
                 if (animate)
                 {
-                    int direction = Array.IndexOf(new[] { "General", "Appearance", "Media", "Notifications", "Devices", "VPN", "About" }, key) >= Array.IndexOf(new[] { "General", "Appearance", "Media", "Notifications", "Devices", "VPN", "About" }, previousSection) ? 1 : -1;
+                    int direction = Array.IndexOf(new[] { "General", "Appearance", "Focus", "Media", "Notifications", "Devices", "VPN", "About" }, key) >= Array.IndexOf(new[] { "General", "Appearance", "Focus", "Media", "Notifications", "Devices", "VPN", "About" }, previousSection) ? 1 : -1;
                     transition.Begin(PageTransitionSurface.CapturePage(pageHost), direction);
                 }
                 else
                     pageHost.Invalidate(true);
                 SelectNavigation(animate);
                 if (previousBody != null)
-                    previousBody.Dispose();
+                    previousBody.Viewport.Dispose();
                 if (Visible && !exporting) ScheduleSave();
             }
             catch
             {
                 transition.Finish();
                 if (body != previousBody && body != null)
-                    body.Dispose();
+                    body.Viewport.Dispose();
                 body = previousBody;
                 collect.Clear();
                 collect.AddRange(previousCollectors);
@@ -282,6 +284,7 @@ namespace WinDynamicIsland
                 if (body != null && !body.IsDisposed)
                 {
                     body.ResumeLayout(false);
+                    body.Viewport.Visible = true;
                     body.Visible = true;
                 }
                 BuildNavigation();
@@ -292,7 +295,7 @@ namespace WinDynamicIsland
         }
         void Help(string key)
         {
-            var label = new Label { Text = L.T(key), ForeColor = muted, Width = 620, AutoSize = false, Margin = new Padding(0, 8, 0, 14) };
+            var label = new Label { Text = L.T(key), Tag = "muted", ForeColor = muted, Width = 620, AutoSize = false, Margin = new Padding(0, 8, 0, 14) };
             label.Height = TextRenderer.MeasureText(label.Text, Font, new Size(620, 0), TextFormatFlags.WordBreak).Height + 12;
             label.SizeChanged += delegate
             {
@@ -314,7 +317,7 @@ namespace WinDynamicIsland
         }
         Panel Row(string key)
         {
-            var panel = new GlassCard { Width = 620, Height = 65, BackColor = surface, Margin = new Padding(0, 4, 0, 4) };
+            var panel = new GlassCard { Width = 620, Height = AppDesign.Material ? 76 : 65, BackColor = surface, Margin = new Padding(0, 4, 0, 4) };
             panel.Controls.Add(new Label { Text = L.T(key), BackColor = Color.Transparent, AutoEllipsis = true, AutoSize = false, Width = 350, Height = 42, Location = new Point(14, 17) });
             body.Controls.Add(panel);
             return panel;
@@ -330,12 +333,15 @@ namespace WinDynamicIsland
         {
             var row = Row(key);
             row.Controls[0].Width = 275;
-            var input = new SelectionButton(values, Math.Max(0, index)) { Anchor = AnchorStyles.Top | AnchorStyles.Right, Location = new Point(335, 16), Width = 265, Height = 34, BackColor = background, ForeColor = Color.White, AccessibleName = L.T(key) };
+            var input = new SelectionButton(values, Math.Max(0, index)) { Anchor = AnchorStyles.Top | AnchorStyles.Right, Location = new Point(335, 16), Width = 265, Height = AppDesign.Material ? 44 : 34, BackColor = background, ForeColor = IslandTheme.Foreground, AccessibleName = L.T(key) };
             row.Controls.Add(input);
             row.Resize += delegate
             {
+                input.Left = Math.Max(14, row.ClientSize.Width - input.Width - 20);
                 row.Controls[0].Width = Math.Max(80, input.Left - 24);
             };
+            input.Left = Math.Max(14, row.ClientSize.Width - input.Width - 20);
+            row.Controls[0].Width = Math.Max(80, input.Left - 24);
             if (key != "FocusPreset") collect.Add(() => set(input.SelectedIndex));
             input.SelectionChanged += delegate { ScheduleSave(); };
             if (language || key == "Provider" || key == "NotificationRoute" || key == "FocusPreset")
@@ -356,7 +362,8 @@ namespace WinDynamicIsland
             row.Height = 84;
             row.Controls[0].Height = 25;
             row.Controls[0].Top = 8;
-            var input = new TextBox { Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, Text = value ?? "", Location = new Point(14, 41), Width = 584, BackColor = background, ForeColor = Color.White, BorderStyle = BorderStyle.FixedSingle };
+            var input = new TextBox { Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, Text = value ?? "", Location = new Point(14, 41), Width = 584, BackColor = AppDesign.Material ? AppDesign.High : background, ForeColor = IslandTheme.Foreground, BorderStyle = AppDesign.Material ? BorderStyle.None : BorderStyle.FixedSingle };
+            input.Width = Math.Max(80, row.ClientSize.Width - 28);
             row.Controls.Add(input);
             collect.Add(() => set(input.Text));
             input.TextChanged += delegate { ScheduleSave(); };
@@ -391,7 +398,7 @@ namespace WinDynamicIsland
                 ShowSection(section);
                 subtitle.Text = L.T("Saved");
             }
-            catch (Exception ex) { MessageBox.Show(this, ex.Message, L.T("Error")); }
+            catch (Exception ex) { AppDialog.Show(this, ex.Message, L.T("Error")); }
         }
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
@@ -423,6 +430,7 @@ namespace WinDynamicIsland
             draft = Program.Settings.Clone();
             savedDraft = JsonCodec.Serialize(draft);
             L.Language = draft.Language;
+            ApplyVisualTheme();
             ShowSection(section);
         }
         internal void Export(string folder)
