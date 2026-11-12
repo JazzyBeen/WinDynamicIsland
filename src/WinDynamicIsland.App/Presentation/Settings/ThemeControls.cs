@@ -262,7 +262,7 @@ namespace WinDynamicIsland
     internal class GlassButton : Button
     {
         bool hover, pressed, visualDisposed;
-        float hoverAmount, pressAmount;
+        float hoverAmount, pressAmount, pulse = 1;
         readonly Timer interactionTimer = new FrameTimer();
         DateTime interactionAt;
         internal bool Primary, Selected, Navigation;
@@ -285,7 +285,8 @@ namespace WinDynamicIsland
                     hoverAmount = hover ? 1 : 0;
                     pressAmount = pressed ? 1 : 0;
                 }
-                if (hoverAmount == (hover ? 1 : 0) && pressAmount == (pressed ? 1 : 0))
+                pulse = Program.Settings.InterfaceAnimations ? Math.Min(1, pulse + dt / 620) : 1;
+                if (hoverAmount == (hover ? 1 : 0) && pressAmount == (pressed ? 1 : 0) && pulse >= 1)
                     interactionTimer.Stop();
                 Invalidate();
             };
@@ -294,6 +295,8 @@ namespace WinDynamicIsland
         {
             return value < target ? Math.Min(target, value + step) : Math.Max(target, value - step);
         }
+        // One-shot confirmation: the button dips and springs back while a ring spreads to its edge and fades.
+        internal void Pulse() { if (!Program.Settings.InterfaceAnimations) return; pulse = 0; AnimateInteraction(); }
         void AnimateInteraction()
         {
             if (visualDisposed)
@@ -343,15 +346,17 @@ namespace WinDynamicIsland
             else
                 e.Graphics.Clear(Parent == null ? Color.Black : Parent.BackColor);
             var drawing = e.Graphics.Save();
-            if (pressAmount > 0)
+            if (pressAmount > 0 || pulse < 1)
             {
-                float scale = 1 - .018f * pressAmount;
+                float pop = (float)Math.Sin(Math.Min(1, pulse * 2.2f) * Math.PI);
+                float scale = 1 - .018f * pressAmount - .04f * pop;
                 e.Graphics.TranslateTransform(Width * (1 - scale) / 2, Height * (1 - scale) / 2);
                 e.Graphics.ScaleTransform(scale, scale);
             }
             if (AppDesign.Material)
             {
                 PaintMaterial(e.Graphics);
+                PaintPulse(e.Graphics);
                 e.Graphics.Restore(drawing);
                 return;
             }
@@ -379,6 +384,17 @@ namespace WinDynamicIsland
                 using (var pen = new Pen(IslandTheme.Accent, 1))
                     e.Graphics.DrawPath(pen, path);
             e.Graphics.Restore(drawing);
+        }
+        void PaintPulse(Graphics g)
+        {
+            if (pulse >= 1) return;
+            float ease = 1 - (1 - pulse) * (1 - pulse) * (1 - pulse);
+            float grow = -7 + 7 * ease;
+            int alpha = (int)(170 * (1 - pulse) * (1 - pulse));
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            var ring = new RectangleF(1 - grow, 1 - grow, Width - 2 + grow * 2, Height - 2 + grow * 2);
+            using (var path = IslandTheme.Round(ring, ring.Height / 2f))
+            using (var pen = new Pen(Color.FromArgb(alpha, AppDesign.Primary), 2.5f)) g.DrawPath(pen, path);
         }
         void PaintMaterial(Graphics g)
         {

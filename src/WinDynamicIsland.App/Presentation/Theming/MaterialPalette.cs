@@ -36,7 +36,7 @@ namespace WinDynamicIsland
                 case "Expressive": kind = Style.Expressive; break;
                 case "Content": kind = Style.Content; break;
                 case "Rainbow": kind = Style.Rainbow; break;
-                case "Monochrome": int gray = (int)Math.Round(seed.GetBrightness() * 255); argb = unchecked((uint)Color.FromArgb(gray, gray, gray).ToArgb()); break;
+                case "Monochrome": kind = Style.Spritz; break;
             }
             var core = CorePalette.Of(argb, kind);
             return new MaterialPalette

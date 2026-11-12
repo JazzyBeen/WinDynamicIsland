@@ -399,6 +399,7 @@ namespace WinDynamicIsland
                     apply(draft.Clone());
                 subtitle.Text = L.T("Saved");
                 ShowSection(section);
+                save.Pulse();
                 subtitle.Text = L.T("Saved");
             }
             catch (Exception ex) { AppDialog.Show(this, ex.Message, L.T("Error")); }
