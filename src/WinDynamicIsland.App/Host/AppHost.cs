@@ -104,7 +104,7 @@ namespace WinDynamicIsland
         {
             // Autosave applies settings often; rebuild the menu only when its
             // language or look actually changed.
-            string look = L.Language + "|" + Program.Settings.InterfaceDesign + "|" + MaterialPalette.Hex(AppDesign.Seed);
+            string look = L.Language + "|" + Program.Settings.InterfaceDesign + "|" + MaterialPalette.Hex(AppDesign.Seed) + "|" + MaterialPalette.Hex(AppDesign.Surface) + MaterialPalette.Hex(AppDesign.Primary);
             if (look == trayLook && tray.ContextMenuStrip != null) return;
             trayLook = look;
             var menu = new ContextMenuStrip();

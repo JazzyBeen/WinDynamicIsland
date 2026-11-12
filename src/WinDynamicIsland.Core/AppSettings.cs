@@ -9,6 +9,8 @@ namespace WinDynamicIsland.Core
         public string InterfaceDesign { get; set; }
         public string MaterialColorMode { get; set; }
         public string MaterialSeedColor { get; set; }
+        public string MaterialPaletteStyle { get; set; }
+        public bool MaterialPureBlack { get; set; }
         public bool FocusEnabled { get; set; }
         public int FocusMinutes { get; set; }
         public int BreakMinutes { get; set; }
@@ -204,6 +206,7 @@ namespace WinDynamicIsland.Core
             InterfaceDesign = "Classic";
             MaterialColorMode = "Default";
             MaterialSeedColor = "#6750A4";
+            MaterialPaletteStyle = "TonalSpot";
             FocusEnabled = true;
             FocusMinutes = 50;
             BreakMinutes = 10;
@@ -238,10 +241,11 @@ namespace WinDynamicIsland.Core
         public void Validate()
         {
             InterfaceDesign = InterfaceDesign == "Material" ? "Material" : "Classic";
-            MaterialColorMode = MaterialColorMode == "Custom" || MaterialColorMode == "Wallpaper" ? MaterialColorMode : "Default";
+            MaterialColorMode = MaterialColorMode == "Custom" || MaterialColorMode == "Wallpaper" || MaterialColorMode == "Ori" ? MaterialColorMode : "Default";
             int colorValue;
             if (MaterialSeedColor == null || MaterialSeedColor.Length != 7 || MaterialSeedColor[0] != '#' || !int.TryParse(MaterialSeedColor.Substring(1), System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out colorValue)) MaterialSeedColor = "#6750A4";
             MaterialSeedColor = MaterialSeedColor.ToUpperInvariant();
+            if (Array.IndexOf(new[] { "TonalSpot", "Vibrant", "Expressive", "Content", "Rainbow", "Monochrome" }, MaterialPaletteStyle) < 0) MaterialPaletteStyle = "TonalSpot";
             FocusMinutes = Clamp(FocusMinutes, 1, 120);
             BreakMinutes = Clamp(BreakMinutes, 1, 60);
             FocusVolume = Clamp(FocusVolume, 0, 100);

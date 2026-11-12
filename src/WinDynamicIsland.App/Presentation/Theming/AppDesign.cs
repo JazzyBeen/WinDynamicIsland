@@ -20,15 +20,24 @@ namespace WinDynamicIsland
         internal static Color Seed { get { return Color.FromArgb(palette.Seed); } }
         internal static void ConfigurePalette()
         {
-            string mode = Program.Settings.MaterialColorMode;
-            string seed = mode == "Wallpaper" ? WallpaperPaletteMonitor.CachedSeed : Program.Settings.MaterialSeedColor;
-            string key = mode == "Default" ? "Default" : mode + seed;
+            var settings = Program.Settings;
+            string mode = settings.MaterialColorMode;
+            string seed = mode == "Wallpaper" ? WallpaperPaletteMonitor.CachedSeed : settings.MaterialSeedColor;
+            string key = mode + (mode == "Custom" || mode == "Wallpaper" ? seed + settings.MaterialPaletteStyle : "") + (settings.MaterialPureBlack ? "!" : "");
             if (key == paletteKey) return;
-            if (mode == "Default") palette = MaterialPalette.Default;
-            else palette = MaterialPalette.FromSeed(MaterialPalette.Parse(seed));
+            MaterialPalette next;
+            if (mode == "Default") next = MaterialPalette.Default;
+            else if (mode == "Ori") next = MaterialPalette.Ori;
+            else next = MaterialPalette.FromSeed(MaterialPalette.Parse(seed), settings.MaterialPaletteStyle);
+            palette = settings.MaterialPureBlack ? next.PureBlack() : next;
             paletteKey = key;
         }
-        internal static void WallpaperSeed(Color seed) { palette = MaterialPalette.FromSeed(seed); paletteKey = "Wallpaper" + MaterialPalette.Hex(seed); }
+        internal static void WallpaperSeed(Color seed)
+        {
+            var settings = Program.Settings; var next = MaterialPalette.FromSeed(seed, settings.MaterialPaletteStyle);
+            palette = settings.MaterialPureBlack ? next.PureBlack() : next;
+            paletteKey = "Wallpaper" + MaterialPalette.Hex(seed) + settings.MaterialPaletteStyle + (settings.MaterialPureBlack ? "!" : "");
+        }
         static readonly Stopwatch clock = Stopwatch.StartNew();
         static double from, target, changed;
         static bool initialized;

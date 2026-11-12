@@ -15,9 +15,30 @@ namespace WinDynamicIsland
             PrimaryContainer = Color.FromArgb(79,55,139), OnContainer = Color.FromArgb(234,221,255), Error = Color.FromArgb(255,180,171), Success = Color.FromArgb(174,211,178), Outline = Color.FromArgb(147,143,153)
         };
         static Color Tone(TonalPalette palette, uint tone) { return Color.FromArgb(unchecked((int)palette[tone])); }
-        internal static MaterialPalette FromSeed(Color seed)
+        internal static readonly string[] Styles = { "TonalSpot", "Vibrant", "Expressive", "Content", "Rainbow", "Monochrome" };
+        internal static string NormalizeStyle(string style) { return Array.IndexOf(Styles, style) >= 0 ? style : "TonalSpot"; }
+        // Deep black-blue night with pale spirit-light blue accents.
+        internal static readonly MaterialPalette Ori = new MaterialPalette
         {
-            var core = CorePalette.Of(unchecked((uint)seed.ToArgb()), Style.TonalSpot);
+            Seed = Color.FromArgb(63, 182, 240).ToArgb(), Surface = Color.FromArgb(2,7,12), Container = Color.FromArgb(7,19,29), High = Color.FromArgb(12,29,43), Highest = Color.FromArgb(17,39,57),
+            Ink = Color.FromArgb(221,243,255), Muted = Color.FromArgb(156,196,218), Primary = Color.FromArgb(143,220,255), OnPrimary = Color.FromArgb(0,48,74), Secondary = Color.FromArgb(18,51,71), OnSecondary = Color.FromArgb(191,230,250),
+            PrimaryContainer = Color.FromArgb(14,74,107), OnContainer = Color.FromArgb(198,238,255), Error = Color.FromArgb(255,180,171), Success = Color.FromArgb(150,226,214), Outline = Color.FromArgb(79,124,149)
+        };
+        internal static MaterialPalette FromSeed(Color seed) { return FromSeed(seed, "TonalSpot"); }
+        internal static MaterialPalette FromSeed(Color seed, string style)
+        {
+            style = NormalizeStyle(style);
+            uint argb = unchecked((uint)seed.ToArgb());
+            Style kind = Style.TonalSpot;
+            switch (style)
+            {
+                case "Vibrant": kind = Style.Vibrant; break;
+                case "Expressive": kind = Style.Expressive; break;
+                case "Content": kind = Style.Content; break;
+                case "Rainbow": kind = Style.Rainbow; break;
+                case "Monochrome": int gray = (int)Math.Round(seed.GetBrightness() * 255); argb = unchecked((uint)Color.FromArgb(gray, gray, gray).ToArgb()); break;
+            }
+            var core = CorePalette.Of(argb, kind);
             return new MaterialPalette
             {
                 Seed = seed.ToArgb(), Surface = Tone(core.Neutral, 6), Container = Tone(core.Neutral, 12), High = Tone(core.Neutral, 17), Highest = Tone(core.Neutral, 22),
@@ -25,6 +46,15 @@ namespace WinDynamicIsland
                 PrimaryContainer = Tone(core.Primary, 30), OnContainer = Tone(core.Primary, 90), Secondary = Tone(core.Secondary, 30), OnSecondary = Tone(core.Secondary, 90), Error = Tone(core.Error, 80), Success = Default.Success
             };
         }
+        // True black surfaces for OLED screens; accents stay untouched.
+        internal MaterialPalette PureBlack()
+        {
+            var copy = (MaterialPalette)MemberwiseClone();
+            copy.Surface = Color.Black;
+            copy.Container = Mix(Container, Color.Black, 0.55f); copy.High = Mix(High, Color.Black, 0.35f); copy.Highest = Mix(Highest, Color.Black, 0.2f);
+            return copy;
+        }
+        static Color Mix(Color a, Color b, float t) { return Color.FromArgb((int)(a.R + (b.R - a.R) * t), (int)(a.G + (b.G - a.G) * t), (int)(a.B + (b.B - a.B) * t)); }
         internal static string Hex(Color color) { return "#" + (color.ToArgb() & 0xffffff).ToString("X6", CultureInfo.InvariantCulture); }
         internal static Color Parse(string value)
         {
